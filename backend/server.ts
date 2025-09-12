@@ -2,9 +2,7 @@ import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import multer from "multer";
-import AnalysisService from "./service/analysis_service";
 import {
-  getCachedBranches,
   getCachedAnalysis,
   upsertAnalysis,
   insertFile,
@@ -13,7 +11,14 @@ import {
 } from "./db/actions";
 import AiService from "./service/ai_service";
 import AgentsService from "./service/agents_service";
-// import AgentsService from "./service/agents_service";
+import AnalysisService from "./service/analysis_service";
+import {
+  analysisRateLimiter,
+  aiRateLimiter,
+  generalRateLimiter,
+  inlineAiRateLimiter,
+  fixPlanRateLimiter,
+} from "./utils/rate_limits";
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +34,8 @@ app.use(
 );
 
 app.use(express.json());
+
+app.use(generalRateLimiter);
 
 app.get("/", (req, res) => {
   res.send({ response: "DepSec backend is running!" });
@@ -69,7 +76,7 @@ app.post("/branches", (req: Request, res: Response) => {
   });
 });
 
-app.post("/analyseDependencies", (req: Request, res: Response) => {
+app.post("/analyseDependencies", analysisRateLimiter, (req: Request, res: Response) => {
   (async () => {
     const { username, repo, branch, github_pat } = req.body;
 
@@ -145,6 +152,10 @@ app.post(
         return res.status(400).json({ error: "No file uploaded" });
       }
 
+      if(file.size > 5 * 1024 * 1024) { // 5MB limit
+        return res.status(400).json({ error: "File size exceeds the 5MB limit" });
+      }
+
       console.log("File uploaded:", file.filename);
 
       await insertFile({
@@ -163,7 +174,7 @@ app.post(
   }
 );
 
-app.post("/analyseFile", (req: Request, res: Response) => {
+app.post("/analyseFile", analysisRateLimiter, (req: Request, res: Response) => {
   (async () => {
     const { file } = req.body;
     if (!file) {
@@ -189,7 +200,7 @@ app.post("/analyseFile", (req: Request, res: Response) => {
   });
 });
 
-app.post("/aiVulnSummary", (req: Request, res: Response) => {
+app.post("/aiVulnSummary", aiRateLimiter, (req: Request, res: Response) => {
   (async () => {
     const { vulnerabilities } = req.body;
     if (!vulnerabilities || vulnerabilities.vulnerabilities.length === 0) {
@@ -216,7 +227,7 @@ app.post("/aiVulnSummary", (req: Request, res: Response) => {
   });
 });
 
-app.post("/inlineai", (req: Request, res: Response) => {
+app.post("/inlineai", inlineAiRateLimiter, (req: Request, res: Response) => {
   (async () => {
     const { prompt, context, selectedText } = req.body;
     if (!selectedText || !prompt || !context) {
@@ -237,7 +248,7 @@ app.post("/inlineai", (req: Request, res: Response) => {
   });
 });
 
-app.get("/fixPlan", (req: Request, res: Response) => {
+app.get("/fixPlan", fixPlanRateLimiter, (req: Request, res: Response) => {
   (async () => {
     const { username, repo, branch } = req.query;
 
