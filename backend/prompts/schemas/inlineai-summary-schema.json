@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Vulnerability Summary Schema",
+  "description": "Schema for AI-generated vulnerability summaries with strict formatting and prioritization rules.",
+  "required": [
+    "summary",
+    "actionable_items",
+    "explaination"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 50,
+      "description": "Main summary of what was asked in the prompt for the sent information (under 50 words). Must be concise and non-redundant and non-generic. Use surrounding context for more relevant response."
+    },
+    "actionable_items": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 20,
+        "description": "Actionable item based on the summary, prompt and the surrounding context provided. Must be concise and non-redundant."
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "List of actionable items based on the summary and what to do next based on what is asked in the prompt. Each item should be a concise action that can be taken based on the summary provided."
+    },
+    "explaination":{
+        "type": "string",
+      "minLength": 10,
+      "maxLength": 50,
+      "description": "Explaination of the selected text without repeating the summary. Must be concise and non-redundant. Use surrounding context for more relevant response."
+    }
+  },
+  "additionalProperties": false
+}
