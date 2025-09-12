@@ -16,8 +16,8 @@ const Banner = () => {
         </div>
         <div className="relative z-10 text-center">
           <h1 className="lg:text-7xl text-5xl font-bold tracking-tighter">
-            Secure your deps, <br />
-            Ship with confidence.
+            Secure your deps <br />
+            Ship with confidence
           </h1>
         </div>
       </div>

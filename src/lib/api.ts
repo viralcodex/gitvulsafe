@@ -30,7 +30,7 @@ export async function getRepoBranches(
     });
 
     if (response.status === 429) {
-      return { error: "Rate limit exceeded. Please try again later." };
+      return response.json();
     }
 
     const data = (await response.json()) as BranchesApiResponse;
@@ -59,7 +59,7 @@ export async function getManifestFileContents(
     });
 
     if (response.status === 429) {
-      throw new Error("Rate limit exceeded. Please try again later.");
+      return (await response.json());
     }
 
     const data = (await response.json()) as ManifestFileContentsApiResponse;
@@ -95,7 +95,7 @@ export async function analyseDependencies(
     });
 
     if (response.status === 429) {
-      throw new Error("Rate limit exceeded. Please try again later.");
+      return (await response.json());
     }
 
     const data = (await response.json()) as ManifestFileContentsApiResponse;
@@ -129,6 +129,10 @@ export async function uploadFile(
       throw new Error("Failed to upload file");
     }
 
+    if (response.status === 429) {
+      return { response: await response.json(), newFileName };
+    }
+
     console.log("File uploaded successfully"); // This line is for debugging, can be removed
     return { response: await response.json(), newFileName };
   } catch (error) {
@@ -155,6 +159,10 @@ export async function getAiVulnerabilitiesSummary(vulnerabilities: {
 
     if (!response.ok) {
       throw new Error("Failed to generate AI vulnerabilities summary");
+    }
+
+    if (response.status === 429) {
+      return await response.json();
     }
 
     const data = await response.json();
@@ -191,6 +199,10 @@ export async function getInlineAiResponse(
       throw new Error("Failed to get inline AI response");
     }
 
+    if(response.status === 429) {
+      return await response.json();
+    }
+
     const data = await response.json();
     return data.response;
   } catch (error) {
@@ -218,6 +230,10 @@ export async function getFixPlan(
 
     if (!response.ok) {
       throw new Error("Failed to generate fix plan");
+    }
+    
+    if(response.status === 429) {
+      return await response.json();
     }
 
     const data = await response.json();
