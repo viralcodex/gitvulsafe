@@ -31,9 +31,7 @@ const MainContent = () => {
   const router = useRouter();
 
   useEffect(() => {
-    if (url && !verifyUrl(url, setBranchError)) {
-      setBranchError("Invalid GitHub URL");
-    } else {
+    if (url && verifyUrl(url, setBranchError)) {
       setBranchError("");
     }
   }, [setBranchError, url]);
@@ -43,25 +41,25 @@ const MainContent = () => {
       setUploaded(false);
       const result = verifyFile(file, setBranchError, setFile);
       if (!result) {
-        setBranchError(
-          "Only common manifest files are allowed (.json, .yaml, .xml, .txt)"
-        );
-      } else {
-        setBranchError("");
-        void uploadFile(file)
-          .then((response) => {
-            console.log("File uploaded successfully");
-            toast.success("File uploaded successfully");
-            setNewFileName(response.newFileName);
-            setUploaded(true);
-            return true;
-          })
-          .catch((err) => {
-            console.error("Error uploading file:", err);
-            setBranchError("Failed to upload file. Please try again later.");
-            setUploaded(false);
-          });
+        setFile(null);
+        setUploaded(false);
+        return;
       }
+      setBranchError("");
+      void uploadFile(file)
+        .then((response) => {
+          console.log("File uploaded successfully");
+          toast.success("File uploaded successfully");
+          setNewFileName(response.newFileName);
+          setUploaded(true);
+          return true;
+        })
+        .catch((err) => {
+          console.error("Error uploading file:", err);
+          setBranchError("Failed to upload file. Please try again later.");
+          setUploaded(false);
+        });
+      
     }
   }, [file, setBranchError]);
 
@@ -171,8 +169,8 @@ const MainContent = () => {
             hasMore={hasMore}
             totalBranches={totalBranches}
             loadNextPage={loadNextPage}
-            className="px-4 pb-1"
-            />
+            className=""
+          />
           <div className="flex items-center w-full gap-x-2 mt-2">
             <div className="flex-grow h-px bg-white" />
             <span className="font-bold text-muted-foreground text-sm sm:text-base">
@@ -181,8 +179,8 @@ const MainContent = () => {
             <div className="flex-grow h-px bg-white" />
           </div>
           <div className="flex flex-grow w-full flex-col items-start justify-center my-2">
-            <label className="block text-lg font-bold text-primary-foreground mb-2">
-              Upload a manifest file (.json, .yaml, .xml, .txt)
+            <label className="block text-md font-bold text-primary-foreground mb-2">
+              Upload a manifest file <span className="italic font-semibold">(.json, .yaml, .xml, .txt)</span> - Max 5MB
             </label>
             <Input
               className="flex-1 rounded-md border-[3px] border-black px-3 text-base font-bold placeholder:text-base placeholder:font-normal sm:px-4 sm:py-4 cursor-pointer"
@@ -191,12 +189,14 @@ const MainContent = () => {
                 setFile(e.target.files?.[0] || null);
                 setBranchError("");
               }}
+              disabled={url !== ""}
             />
           </div>
           <div className="flex w-full items-center justify-center gap-x-4">
             <Button
-              className="cursor-pointer bg-accent text-black border-[3px] border-black p-4 px-4 text-base transition-transform hover:text-accent-foreground hover:-translate-x-0.5 hover:-translate-y-0.5 hover:transform hover:bg-primary-foreground sm:p-6 sm:px-6 sm:text-lg"
+              className="cursor-pointer bg-accent text-black border-[3px] border-black p-4 px-4 text-base transition-transform hover:text-accent-foreground hover:-translate-x-0.5 hover:-translate-y-0.5 hover:transform hover:bg-primary-foreground sm:p-6 sm:px-6 sm:text-lg disabled:cursor-not-allowed"
               type="submit"
+              disabled={loadingBranches || (!url && !file) || (file !== null && !uploaded)}
             >
               Analyse
             </Button>

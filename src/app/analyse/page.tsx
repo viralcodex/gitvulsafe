@@ -327,7 +327,6 @@ const Page = () => {
     // console.log("Input URL:", url);
     setInputUrl(url);
     if (url && !verifyUrl(url, setBranchError)) {
-      setBranchError("Invalid GitHub URL");
       return;
     }
     setBranchError("");

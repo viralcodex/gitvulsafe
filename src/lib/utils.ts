@@ -48,6 +48,11 @@ export const verifyFile = (
     return;
   }
 
+  if(file.size > 5 * 1024 * 1024) { // 5MB limit
+    setError("File size exceeds the 5MB limit");
+    return;
+  }
+
   const fileExtension = file.name.split(".").pop()?.toLowerCase();
   if (
     !fileExtension ||

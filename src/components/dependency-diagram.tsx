@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Badge } from "./ui/badge";
-import Image from "next/image";
 
 interface DepDiagramProps {
   svgRef: React.RefObject<SVGSVGElement | null>;

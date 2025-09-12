@@ -10,19 +10,45 @@ import FloatingAiForm from "@/components/floating-ai-form";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
-  title: "Dep Sec",
+  title: "Dep Hound",
   description: "A tool for analysing dependencies for security vulnerabilities",
   openGraph: {
-    title: "Dep Sec",
+    title: "Dep Hound",
     description:
       "A tool for analysing dependencies for security vulnerabilities",
-    url: "https://depsec.com", // Replace with your actual URL
-    siteName: "Dep Sec",
+    url: "https://dephound.com", 
+    siteName: "Dep Hound",
   },
+  keywords: [
+    "dependency analysis",
+    "security vulnerabilities",
+    "open source",
+    "software security",
+    "vulnerability scanning",
+    "package management",
+    "ai insights",
+    "generative ai",
+    "software development",
+    "devsecops",
+    "cybersecurity",
+    "npm",
+    "yarn",
+    "pip",
+    "maven",
+    "gradle",
+    "ruby gems",
+    "cargo",
+    "nuget",
+  ],
+  authors: [
+    {name: "Aviral Shukla",
+      url: "https://github.com/viralcodex"
+    }
+  ]
 };
 
 export default function RootLayout({
