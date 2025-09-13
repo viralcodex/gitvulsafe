@@ -9,7 +9,6 @@ yarn.lock
 dist/
 build/
 .env
-.env.*
 .DS_Store
 coverage/
 *.local
