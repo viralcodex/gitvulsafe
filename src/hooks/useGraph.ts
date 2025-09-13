@@ -17,11 +17,12 @@ import {
 
 //and then based on the results we will create a graph
 export const useGraph = (
+  refreshTrigger: number,
+  setError: (error: string) => void,
   username?: string,
   repo?: string,
   branch?: string,
   file?: string,
-  setError?: (error: string) => void
 ) => {
   const [dependencies, setDependencies] = useState<GroupedDependencies>({});
   const [manifestData, setManifestData] = useState<ManifestFileContentsApiResponse | null>(null);
@@ -34,6 +35,12 @@ export const useGraph = (
         const manifestData: ManifestFileContentsApiResponse =
           await analyseDependencies(username!, repo!, branch!, file!);
         console.log("Manifest Data:", manifestData, Object.values(manifestData).flat().length);
+        if(manifestData && manifestData.error)
+        {
+          setError(manifestData.error);
+          setLoading(false);
+          return;
+        }
         if (!manifestData || !manifestData.dependencies) {
           
           setLoading(false);
@@ -61,7 +68,7 @@ export const useGraph = (
         setLoading(false);
       } catch (err) {
         console.error("Error fetching manifest file contents:", err);
-        setError?.(
+        setError(
           "Failed to fetch manifest file contents. Please try again later."
         );
         setLoading(false);
@@ -226,10 +233,18 @@ export const useGraph = (
     return maxCvss;
   };
   
+  console.log("USE GRAPH LOADING STATE", loading);
   useEffect(() => {
     setLoading(true);
+    console.log("Fetching dependencies for:", {
+      username,
+      repo,
+      branch,
+      file,
+      refreshTrigger,
+    });
     fetchDependencies(username, repo, branch, file);
-  }, [branch, fetchDependencies, file, repo, username]);
+  }, [branch, file, repo, username, refreshTrigger, fetchDependencies]);
 
   useEffect(() => {
     if (Object.keys(dependencies).length > 0) {

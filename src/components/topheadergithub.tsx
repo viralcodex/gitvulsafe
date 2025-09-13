@@ -27,7 +27,7 @@ interface TopHeaderProps {
   setError: (error: string) => void;
   setDependencies: (dependencies: {
     [technology: string]: Dependency[];
-  }) => void;    
+  }) => void;
   setGraphData: (graphData: EcosystemGraphMap) => void;
   setLoading: (loading: boolean) => void;
   setIsFileHeaderOpen: (open: boolean) => void;
@@ -38,6 +38,7 @@ interface TopHeaderProps {
   setSelectedBranch: (branch: string | null) => void;
   setBranchError: (error: string) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRefresh: () => void;
 }
 
 const TopHeaderGithub = (props: TopHeaderProps) => {
@@ -59,6 +60,7 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
     setSelectedBranch,
     setBranchError,
     handleInputChange,
+    onRefresh,
   } = props;
 
   const router = Router.useRouter();
@@ -74,6 +76,7 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
     console.log("Sanitized Repo:", sanitizedRepo);
 
     if (!branches || branches.length === 0) {
+      console.log("No branches available to select");
       return;
     }
 
@@ -81,16 +84,23 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
     setIsNodeClicked(false);
     setIsSidebarExpanded(false);
     setBranchError("");
-    resetGraphSvg();
 
-    // Redirect to the new URL with the selected branch
-    router.push(
-      `/analyse?username=${encodeURIComponent(
-        sanitizedUsername
-      )}&repo=${encodeURIComponent(
-        sanitizedRepo
-      )}${`&branch=${encodeURIComponent(selectedBranch!)}`}`
-    );
+    // Check if we're on the same page with same parameters
+    const currentUrl = window.location.href;
+    const newUrl = `/analyse?username=${encodeURIComponent(
+      sanitizedUsername
+    )}&repo=${encodeURIComponent(
+      sanitizedRepo
+    )}&branch=${encodeURIComponent(selectedBranch!)}`;
+    
+    if (currentUrl.includes(newUrl.slice(1))) { // Remove leading slash for includes check
+      // Same URL - trigger refresh instead of navigation
+      console.log("Same URL detected, triggering refresh");
+      onRefresh?.();
+    } else {
+      // Different URL - navigate normally
+      router.push(newUrl);
+    }
   };
 
   return (
@@ -128,7 +138,7 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
             />
           </div>
           <Button
-            className="sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm"
+            className="sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm cursor-pointer"
             type="submit"
             disabled={
               isLoading || !inputUrl || !branches.length || loadingBranches

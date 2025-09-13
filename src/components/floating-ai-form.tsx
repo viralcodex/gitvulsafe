@@ -6,6 +6,7 @@ import { useTextSelection } from "@/providers/text-selection-provider";
 import { LoaderCircle } from "lucide-react";
 import Image from "next/image";
 import React, { useState, useRef, useEffect } from "react";
+import toast from "react-hot-toast";
 
 const FloatingAiForm = () => {
   const { selectedText, setSelectedText, mousePosition, selectedDependency } =
@@ -189,10 +190,10 @@ const FloatingAiForm = () => {
       setError("");
       setPrompt("");
     } catch (err) {
-      // console.error("Error submitting prompt:", err);
       setError("Failed to submit prompt");
+      toast.error("Failed to submit prompt. Please try again later.");
       return;
-    } finally {
+    } finally{
       setLoading(false);
     }
     if (window.getSelection) {
@@ -283,16 +284,21 @@ const FloatingAiForm = () => {
               autoFocus
             />
             <button
+              disabled={loading || !prompt.trim()}
               type="submit"
-              className="flex flex-row items-center border-1 border-accent justify-center bg-accent-foreground rounded w-[20%] transition cursor-pointer"
+              className={cn(
+                "flex flex-row items-center border-1 border-accent justify-center bg-accent-foreground rounded w-[20%] transition cursor-pointer",
+                (!prompt.trim()) && "opacity-50 cursor-not-allowed"
+              )}
             >
               {loading ? (
                 <LoaderCircle
-                  className="animate-spin p-4 "
+                  className="animate-spin text-white my-3"
                   size={24}
                   strokeWidth={3}
                 />
-              ) : (
+              )
+               : (
                 <Image
                   src="genaibutton.svg"
                   alt="Generate Fix Plan"

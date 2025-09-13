@@ -44,6 +44,7 @@ const Page = () => {
   const [fixPlanError, setFixPlanError] = useState<string>("");
   const [isFixPlanDialogOpen, setFixPlanDialogOpen] = useState<boolean>(false);
   const [fixPlanComplete, setFixPlanComplete] = useState<boolean>(false);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -67,7 +68,7 @@ const Page = () => {
     setManifestData,
     loading,
     setLoading,
-  } = useGraph(username, repo, branch, file, setError);
+  } = useGraph(refreshTrigger, setError, username, repo, branch, file);
 
   const {
     branches,
@@ -98,17 +99,17 @@ const Page = () => {
     height: getViewportHeight(),
   });
 
- const [selectedEcosystem, setSelectedEcosystem] = useState<string | undefined>(
-   graphData ? Object.keys(graphData)[0] : undefined
- );
+  const [selectedEcosystem, setSelectedEcosystem] = useState<
+    string | undefined
+  >(graphData ? Object.keys(graphData)[0] : undefined);
 
- useEffect(() => {
-   if (graphData && Object.keys(graphData).length > 0) {
-     setSelectedEcosystem((prev) =>
-       prev && graphData[prev] ? prev : Object.keys(graphData)[0]
-     );
-   }
- }, [graphData]);
+  useEffect(() => {
+    if (graphData && Object.keys(graphData).length > 0) {
+      setSelectedEcosystem((prev) =>
+        prev && graphData[prev] ? prev : Object.keys(graphData)[0]
+      );
+    }
+  }, [graphData]);
 
   const ecosystemOptions = useMemo(() => {
     if (!graphData) return [];
@@ -161,7 +162,30 @@ const Page = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [isMobile]);
 
-  // Define the message type for better type safety
+  //Handle navigation event to close everything
+  useEffect(() => {
+    const handleNavigation = () => {
+      setIsNodeClicked(false);
+      setSelectedNode(null);
+      setIsSidebarExpanded(false);
+      setIsDiagramExpanded(false);
+      setFileHeaderOpen(false);
+      setInputFile(null);
+      setUploaded(false);
+    };
+
+    console.log("Page changed");
+    window.addEventListener("popstate", handleNavigation);
+    return () => window.removeEventListener("popstate", handleNavigation);
+  }, []);
+
+  // Close sidebar and reset state when URL parameters change
+  useEffect(() => {
+    setIsNodeClicked(false);
+    setSelectedNode(null);
+    setIsSidebarExpanded(false);
+    setIsDiagramExpanded(false);
+  }, [username, repo, branch, file]);
 
   const omMessage = useCallback((message: SSEMessage) => {
     console.log("SSE Message:", message);
@@ -332,6 +356,11 @@ const Page = () => {
     setBranchError("");
   };
 
+  const handleRefresh = () => {
+    console.log("Refreshing graph data...");
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
   const resetGraph = () => {
     setGraphData({});
     setDependencies({});
@@ -423,6 +452,7 @@ const Page = () => {
             setBranchError={setBranchError}
             handleInputChange={handleInputChange}
             loadNextPage={loadNextPage}
+            onRefresh={handleRefresh}
           />
         )}
         <div
@@ -477,8 +507,9 @@ const Page = () => {
           setIsDiagramExpanded={setIsDiagramExpanded}
           setIsFixPlanLoading={setIsFixPlanLoading}
           generateFixPlan={generateFixPlan}
+          error={error}
         />
-        {error && <div className="text-red-500 text-center mt-4">{error}</div>}
+        {error && <div className="text-red-500 text-center">{error}</div>}
       </div>
       {selectedNode && isNodeClicked && (
         <DependencyDetailsCard

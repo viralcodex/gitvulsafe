@@ -33,6 +33,7 @@ interface DepDiagramProps {
   isDiagramExpanded?: boolean;
   isNodeClicked?: boolean;
   isFixPlanLoading: boolean;
+  error: string;
   onNodeClick?: (g: GraphNode) => void;
   setIsLoading?: (loading: boolean) => void;
   setIsMobile?: (isMobile: boolean) => void;
@@ -52,6 +53,7 @@ const DepDiagram = ({
   windowSize,
   isDiagramExpanded,
   isNodeClicked,
+  error,
   onNodeClick,
   setIsDiagramExpanded,
 }: DepDiagramProps) => {
@@ -748,11 +750,11 @@ const DepDiagram = ({
               ref={svgRef}
               scale={scale}
               className={cn(
-                "border-1 border-accent rounded-xl bg-black/50",
+                "border-1 border-accent rounded-xl bg-black/50 flex h-full w-full",
                 isDragging ? "cursor-grabbing" : "cursor-grab"
               )}
             ></svg>
-            {!isLoading && (
+            {!isLoading && !error && (
               <div>
                 <div className="absolute bottom-16 right-4 flex flex-col items-center justify-center gap-2">
                   <Tooltip>
