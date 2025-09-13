@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { cn, verifyUrl } from "@/lib/utils";
 import { LucideArrowBigRight, LucideLoader2 } from "lucide-react";
 import React from "react";
-import Router from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Dependency, EcosystemGraphMap } from "@/constants/constants";
 import HeaderToggle from "./header-toggle";
 
@@ -56,14 +56,13 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
     setIsNodeClicked,
     setIsSidebarExpanded,
     setLoading,
-    resetGraphSvg,
     setSelectedBranch,
     setBranchError,
     handleInputChange,
     onRefresh,
   } = props;
 
-  const router = Router.useRouter();
+  const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

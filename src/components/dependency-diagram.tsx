@@ -70,7 +70,7 @@ const DepDiagram = ({
   const [scale, setScale] = useState<number>(selectedNodeId ? 0.9 : 0.8);
   const resetRef = useRef<() => void>(() => {});
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
-  const svgSelectionRef = useRef<any>(null);
+  const svgSelectionRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
 
   // Memoize calculated dimensions to prevent unnecessary re-renders
   const {
@@ -122,7 +122,7 @@ const DepDiagram = ({
   ]);
 
   useEffect(() => {
-    if (!graphData || !selectedEcosystem || !graphData[selectedEcosystem])
+    if (!graphData || !selectedEcosystem || !graphData[selectedEcosystem] || !svgRef.current)
       return;
 
     // Capture the current scale value to use throughout this effect
@@ -452,7 +452,7 @@ const DepDiagram = ({
       .style("fill", "#FDFDFD");
 
     // D3 zoom behavior
-    const zoom: d3.ZoomBehavior<SVGSVGElement, unknown> | undefined = d3
+    const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 2])
       .on("start", () => setIsDragging(true))
@@ -467,7 +467,7 @@ const DepDiagram = ({
 
     // Store zoom behavior for programmatic control
     zoomRef.current = zoom;
-    svg.call(zoom as any);
+    svg.call(zoom);
 
     // Force simulation for positioning nodes
     const simulation = d3
@@ -630,10 +630,7 @@ const DepDiagram = ({
         const ty = height / 2 - targetNode.y * currentScale;
         console.log("Centering on node:", targetNode.label, "at", tx, ty);
         const transform = d3.zoomIdentity.translate(tx, ty).scale(currentScale);
-        svg
-          .transition()
-          .duration(0)
-          .call(zoom?.transform as any, transform);
+        svg.transition().duration(0).call(zoom.transform, transform);
       }
     }
 
@@ -687,8 +684,9 @@ const DepDiagram = ({
   }, [isSidebarExpanded, width, height, selectedNodeId]);
 
   const handleZoomIn = () => {
-    if (svgSelectionRef.current && zoomRef.current) {
-      svgSelectionRef.current
+    if (svgSelectionRef.current && zoomRef.current && svgRef.current) {
+      const selection = d3.select(svgRef.current);
+      selection
         .transition()
         .duration(300)
         .call(zoomRef.current.scaleBy, 1.5);
@@ -696,21 +694,19 @@ const DepDiagram = ({
   };
 
   const handleZoomOut = () => {
-    if (svgSelectionRef.current && zoomRef.current) {
-      svgSelectionRef.current
-        .transition()
-        .duration(300)
-        .call(zoomRef.current.scaleBy, 0.67);
+    if (svgSelectionRef.current && zoomRef.current && svgRef.current) {
+      const selection = d3.select(svgRef.current);
+      selection.transition().duration(300).call(zoomRef.current.scaleBy, 0.67);
     }
   };
 
   const handleResetZoom = () => {
-    if (svgSelectionRef.current && zoomRef.current) {
-      setSelectedNodeId(null);
-      setHighlightedPath(new Set<GraphNode>());
-      setHighlightedEdges(new Set<string>());
-      zoomRef.current.scaleTo(svgSelectionRef.current, 1);
-     
+    if (svgSelectionRef.current && zoomRef.current && svgRef.current) {
+      // setSelectedNodeId(null);
+      // setHighlightedPath(new Set<GraphNode>());
+      // setHighlightedEdges(new Set<string>());
+      const selection = d3.select(svgRef.current);
+      zoomRef.current.scaleTo(selection, 1);
     }
   };
 
@@ -798,7 +794,7 @@ const DepDiagram = ({
                         </Button>
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent>Reset Zoom</TooltipContent>
+                    <TooltipContent>Re-center</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild id="toggle-zoom">

@@ -36,7 +36,7 @@ const useFileData = (file: File) => {
     setInputFile(file);
 
     void uploadFile(file)
-      .then((response) => {
+      .then(() => {
         console.log("File uploaded successfully");
         toast.success("File uploaded successfully");
         setUploaded(true);

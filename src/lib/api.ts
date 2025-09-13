@@ -2,6 +2,7 @@ import {
   BranchesApiResponse,
   ManifestFileContentsApiResponse,
   Vulnerability,
+  VulnerabilityFix,
 } from "@/constants/constants";
 import { getNewFileName } from "./utils";
 
@@ -217,7 +218,7 @@ export async function getFixPlan(
   username: string,
   repo: string,
   branch: string
-): Promise<{ [key: string]: any }> {
+): Promise<VulnerabilityFix> {
   try {
     const url = new URL(`${baseUrl}/fixPlan`);
     const response = await fetch(url, {
@@ -231,8 +232,8 @@ export async function getFixPlan(
     if (!response.ok) {
       throw new Error("Failed to generate fix plan");
     }
-    
-    if(response.status === 429) {
+
+    if (response.status === 429) {
       return await response.json();
     }
 

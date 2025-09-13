@@ -189,7 +189,7 @@ const FloatingAiForm = () => {
       setResponse(response);
       setError("");
       setPrompt("");
-    } catch (err) {
+    } catch {
       setError("Failed to submit prompt");
       toast.error("Failed to submit prompt. Please try again later.");
       return;
@@ -227,7 +227,7 @@ const FloatingAiForm = () => {
           {
             <ul className="list-disc pl-3 text-muted-foreground">
               {parsedSummary.actionable_items?.map(
-                (item: any, index: number) => (
+                (item: string, index: number) => (
                   <li key={index} className="wrap-normal text-xs mb-1">
                     <p>{item}</p>
                   </li>
