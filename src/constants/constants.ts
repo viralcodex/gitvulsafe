@@ -24,6 +24,7 @@ export type DependencyGroups = Record<string, Dependency[]>;
 export interface ManifestFileContentsApiResponse {
   dependencies: DependencyGroups;
   vulnerabilities: Vulnerability[];
+  error?: string;
 }
 
 export enum Relation {

@@ -41,6 +41,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     dependencies,
     onClose,
     isSidebarExpanded,
+    isDiagramExpanded,
     setIsSidebarExpanded,
     isMobile,
   } = props;
@@ -255,7 +256,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
             : "w-[35%] p-1 h-[calc(100vh-4rem)] pr-1"
           : isMobile
             ? "w-full p-1 top-1/3 pr-1"
-            : "top-[260px] z-10 p-1 pr-1"
+            : isDiagramExpanded ? "top-1/4" : "top-[260px]" ,"z-10 p-1 pr-1"
       )}
     >
       <Card
