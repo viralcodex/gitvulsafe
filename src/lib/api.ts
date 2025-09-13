@@ -6,7 +6,8 @@ import {
 } from "@/constants/constants";
 import { getNewFileName } from "./utils";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_DEV_URL ?? "https://api.depsec.com";
+const baseUrl =
+  process.env.NEXT_PUBLIC_API_DEV_URL ?? "https://api.dephound.com";
 
 export async function getRepoBranches(
   username: string,
@@ -60,7 +61,7 @@ export async function getManifestFileContents(
     });
 
     if (response.status === 429) {
-      return (await response.json());
+      return await response.json();
     }
 
     const data = (await response.json()) as ManifestFileContentsApiResponse;
@@ -96,7 +97,7 @@ export async function analyseDependencies(
     });
 
     if (response.status === 429) {
-      return (await response.json());
+      return await response.json();
     }
 
     const data = (await response.json()) as ManifestFileContentsApiResponse;
@@ -200,7 +201,7 @@ export async function getInlineAiResponse(
       throw new Error("Failed to get inline AI response");
     }
 
-    if(response.status === 429) {
+    if (response.status === 429) {
       return await response.json();
     }
 
@@ -253,7 +254,6 @@ export async function getFixPlanSSE(
   onError: (error: string) => void,
   onComplete: () => void
 ): Promise<EventSource> {
-  
   const url = new URL(`${baseUrl}/fixPlan`);
   url.searchParams.append("username", username);
   url.searchParams.append("repo", repo);
@@ -269,8 +269,7 @@ export async function getFixPlanSSE(
         console.log("SSE Connection established:", data.message);
         return;
       }
-      switch (data.step)
-      {
+      switch (data.step) {
         case "vulnerability_analysis_start":
           break;
         case "vulnerability_analysis_complete":
@@ -294,7 +293,7 @@ export async function getFixPlanSSE(
     }
   };
 
-  eventSource.addEventListener('end', () => {
+  eventSource.addEventListener("end", () => {
     console.log("SSE stream ended");
     onComplete?.();
     eventSource.close();
@@ -309,3 +308,31 @@ export async function getFixPlanSSE(
   // Return the EventSource so caller can close it manually if needed
   return eventSource;
 }
+
+export const healthCheck = async (): Promise<{
+  response: string;
+  environment: string;
+  timestamp: string;
+  status: string
+}> => {
+  try {
+    const url = new URL(`${baseUrl}/health`);
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Health check failed");
+    }
+
+    const data = (await response.json());
+    console.log("Health Check Data:", data);
+    return data;
+  } catch (error) {
+    console.error("Error during health check:", error);
+    throw new Error("Failed to perform health check. Please try again later.");
+  }
+};

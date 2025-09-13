@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getNewFileName(originalName: string): string {
+export const getNewFileName = (originalName: string): string => {
   const uuid = crypto.randomUUID();
   const fileExtension = originalName.split(".").pop() || "";
   const baseName = originalName.replace(`.${fileExtension}`, "");
