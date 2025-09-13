@@ -19,6 +19,7 @@ import {
   inlineAiRateLimiter,
   fixPlanRateLimiter,
 } from "./utils/rate_limits";
+import { DependencyApiResponse } from "./constants/constants";
 
 // Load environment variables
 dotenv.config();
@@ -93,7 +94,16 @@ app.post("/analyseDependencies", analysisRateLimiter, (req: Request, res: Respon
       branch,
     });
 
-    let cachedData: any[] = [];
+    let cachedData: Array<{
+      uuid: string;
+      username: string;
+      repo: string;
+      branch: string;
+      branches: string[];
+      data: DependencyApiResponse | null;
+      created_at: Date;
+    }> = [];
+
     try {
       cachedData = await getCachedAnalysis(username, repo, branch);
 
