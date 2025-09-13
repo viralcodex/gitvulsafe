@@ -1,9 +1,9 @@
 "use client";
-import Link from 'next/link';
-import React, {useState, useEffect} from 'react'
-import { AiDialog } from './ai-dialog';
-import { GithubDialog } from './github-dialog';
-import Image from 'next/image';
+import Link from "next/link";
+import React, { useState } from "react";
+import { AiDialog } from "./ai-dialog";
+import { GithubDialog } from "./github-dialog";
+import Image from "next/image";
 
 const Header = () => {
   const [githubDialogOpen, setGithubDialogOpen] = useState(false);
@@ -20,7 +20,7 @@ const Header = () => {
         </Link>
         <nav>
           <ul className="flex space-x-4">
-            <li className='flex flex-row items-center space-x-1'>
+            <li className="flex flex-row items-center space-x-1">
               <Image
                 src="github.svg"
                 alt="DepSec Logo"
@@ -72,6 +72,6 @@ const Header = () => {
       </div>
     </header>
   );
-}
+};
 
-export default Header
+export default Header;

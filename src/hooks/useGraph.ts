@@ -233,7 +233,6 @@ export const useGraph = (
     return maxCvss;
   };
   
-  console.log("USE GRAPH LOADING STATE", loading);
   useEffect(() => {
     setLoading(true);
     console.log("Fetching dependencies for:", {

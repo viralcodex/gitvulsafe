@@ -7,7 +7,6 @@ import {
   cn,
   depVulnCount,
   getFixTypeConfig,
-  getRemediationPriorityConfig,
   getSeverityConfig,
 } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -39,25 +38,21 @@ const FixPlanCard = (props: FixPlanCardProps) => {
   const {
     onClose,
     onDownload,
-    ecosystemOptions,
     content,
     manifestData,
-    setManifestData,
     regenerateFixPlan,
     fixPlanError,
-    setFixPlanError,
     isFixPlanLoading,
     fixPlanComplete,
-    setFixPlanComplete,
   } = props;
 
   const [showFixPlans, setShowFixPlans] = useState<Record<string, boolean>>({});
 
   const [isExpandedAll, setIsExpandedAll] = useState(true);
 
-  const dependencyCount = manifestData
-    ? Object.values(manifestData.dependencies).flat().length
-    : 0;
+  // const dependencyCount = manifestData
+  //   ? Object.values(manifestData.dependencies).flat().length
+  //   : 0;
 
   const toggleShowFixPlan = (key: string) => {
     setShowFixPlans((prev) => ({
@@ -297,16 +292,16 @@ const FixPlanCard = (props: FixPlanCardProps) => {
     }
   };
 
-  const getRemediationPriorityBadge = (priority: string, label?: string) => {
-    const config = getRemediationPriorityConfig(priority);
-    return (
-      <Badge className={cn("text-sm", config.className)}>
-        {label && `${label} :`}
-        {getIconComponent(config.icon)}
-        {config.text}
-      </Badge>
-    );
-  };
+  // const getRemediationPriorityBadge = (priority: string, label?: string) => {
+  //   const config = getRemediationPriorityConfig(priority);
+  //   return (
+  //     <Badge className={cn("text-sm", config.className)}>
+  //       {label && `${label} :`}
+  //       {getIconComponent(config.icon)}
+  //       {config.text}
+  //     </Badge>
+  //   );
+  // };
 
   const getSeverityBadge = (score?: string, label?: string) => {
     const config = getSeverityConfig(score);

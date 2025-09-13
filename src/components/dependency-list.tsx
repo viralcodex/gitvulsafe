@@ -18,7 +18,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 
 
-export function AppSidebar({ dependencies, isLoading, error, ...props }: AppSidebarProps) {
+export function AppSidebar({ dependencies, isLoading, ...props }: AppSidebarProps) {
   const [openGroups, setOpenGroups] = useState<{ [tech: string]: boolean }>({});
   const [search, setSearch] = useState("");
   const prevOpenGroups = useRef<{ [tech: string]: boolean }>({});

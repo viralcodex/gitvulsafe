@@ -1,6 +1,5 @@
 import Banner from "@/components/banner";
 import MainContent from "@/components/maincontent";
-import { TooltipProvider } from "@radix-ui/react-tooltip";
 import Image from "next/image";
 
 export default function Home() {
