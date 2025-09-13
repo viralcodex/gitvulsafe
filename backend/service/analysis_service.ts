@@ -18,6 +18,7 @@ import {
   FileDetails,
   Branch,
   manifestFiles,
+  MavenDependency,
 } from "../constants/constants";
 
 const GITHUB_API_BASE_URL = "https://api.github.com";
@@ -370,7 +371,10 @@ class AnalysisService {
     if (manifestFiles["Pub"]) {
       for (const fileContent of manifestFiles["Pub"]) {
         try {
-          const pubspecYaml = yaml.load(fileContent.content) as any;
+          const pubspecYaml = yaml.load(fileContent.content) as {
+            dependencies?: Record<string, string>;
+            dev_dependencies?: Record<string, string>;
+          };
 
           const processDeps = (deps: Record<string, string>) => {
             for (const [name, version] of Object.entries(deps)) {
@@ -419,7 +423,7 @@ class AnalysisService {
           const dependencies =
             result?.project?.dependencies?.[0]?.dependency || [];
 
-          dependencies.forEach((dep: any) => {
+          dependencies.forEach((dep: MavenDependency) => {
             let version = dep.version?.[0] || "unknown";
             if (version.startsWith("${") && version.endsWith("}")) {
               const propName = version.slice(2, -1);
@@ -859,7 +863,7 @@ class AnalysisService {
             dep.transitiveDependencies = transitiveDependencies;
             console.log(dep.name);
             console.dir(transitiveDependencies, { depth: null });
-          } catch (error) {
+          } catch {
             depsDevErr.push({
               name: dep.name,
               version: dep.version,
