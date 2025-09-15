@@ -25,14 +25,12 @@ I came across <a href='https://gitdiagram.com/'>GitDiagram</a> where I made some
   Currently I am using Gemini AI API for the generation part using different JSON schema to provide a structured and uniform response throughout.
 
 # Future Plans
-  <p>I have a lot of things in mind, including:</p>
-  - Improve and provide filtering options for large graphs, as it does become cluttered (critical deps, low priority deps, etc)
-  - Provide options to give users their own schemas for personalised AI responses so that suits them and their needs.
-  - Support for different AI Platforms, not just Gemini (which is the most cost effective right now for my needs).
+I have a lot of things in mind, including:
+ - Improve and provide filtering options for large graphs, as it does become cluttered (critical deps, low priority deps, etc)
+ - Provide options to give users their own schemas for personalised AI responses so that suits them and their needs.
+ - Support for different AI Platforms, not just Gemini (which is the most cost effective right now for my needs).
 
 # Contributions
   - People are welcome to improve and support this project by contributing to the codebase.
   - Please create an issue for anything you want to be fixed or want to contribute for, so that it is easy for me and others to track and understand the request/contribution in detail.
   - It may take some time for the PR to be reviewed as I have a full time job apart from this so please be patient.
-   
-
