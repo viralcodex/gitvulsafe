@@ -84,7 +84,7 @@ const DepDiagram = ({
     const calculatedWidth = isMobile
       ? windowSize.width - 20
       : isSidebarExpanded
-        ? windowSize.width * 0.6 - 20
+        ? windowSize.width * 0.64 - 20
         : windowSize.width - 100;
 
     const calculatedHeight = isMobile

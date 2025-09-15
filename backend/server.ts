@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import multer from "multer";
@@ -24,8 +23,6 @@ import {
   fixPlanRateLimiter,
 } from "./utils/rate_limits";
 import { DependencyApiResponse, manifestFiles } from "./constants/constants";
-
-dotenv.config();
 
 const app = express();
 const PORT = config.port || 8080;
