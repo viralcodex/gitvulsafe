@@ -1,14 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend service for the DepHound application",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "npm install",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "dev": "cross-env NODE_ENV=development nodemon server.ts",
+    "build": "cross-env NODE_ENV=production tsc",
+    "start": "cross-env NODE_ENV=production node dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -27,8 +25,10 @@
     "drizzle-orm": "^0.44.3",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
     "js-yaml": "^4.1.0",
     "langchain": "^0.3.31",
+    "morgan": "^1.10.1",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
@@ -38,6 +38,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.10",
     "@types/xml2js": "^0.4.14",
+    "cross-env": "^10.0.0",
     "drizzle-kit": "^0.18.1",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",

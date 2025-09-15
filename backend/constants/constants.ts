@@ -152,3 +152,26 @@ export const manifestFiles: { [ecosystem: string]: string } = {
   Pub: "pubspec.yaml",
   elixir: "mix.exs",
 };
+
+// Define types for AI response parts
+interface FunctionCall {
+  name?: string;
+  arguments?: Record<string, unknown>;
+}
+
+interface ExecutableCode {
+  language?: string;
+  code?: string;
+}
+
+interface FunctionResponse {
+  name?: string;
+  content?: unknown;
+}
+
+export interface AiResponsePart {
+  text?: string;
+  functionCall?: FunctionCall;
+  executableCode?: ExecutableCode;
+  functionResponse?: FunctionResponse;
+}
