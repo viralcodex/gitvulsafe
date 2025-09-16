@@ -1,7 +1,6 @@
 import GithubService from "../service/analysis_service";
 import axios from "axios";
-import { Ecosystem } from "../service/analysis_service";
-import { mock } from "node:test";
+import { Ecosystem } from "../constants/constants";
 
 jest.mock("axios");
 const mockedAxios = axios as jest.Mocked<typeof axios>;

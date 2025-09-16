@@ -95,5 +95,3 @@ I have a lot of things in mind, including:
   - People are welcome to improve and support this project by contributing to the codebase.
   - Please create an issue for anything you want to be fixed or want to contribute for, so that it is easy for me and others to track and understand the request/contribution in detail.
   - It may take some time for the PR to be reviewed as I have a full time job apart from this so please be patient.
-   
-

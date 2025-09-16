@@ -63,53 +63,6 @@ const MainContent = () => {
     }
   }, [file, setBranchError]);
 
-  //debounce effect to enter github url and fetch branches
-  // useEffect(() => {
-  //   setLoadingBranches(true);
-  //   const fetchBranches = async () => {
-  //     const result = verifyUrl(url, setError);
-  //     if (!result) {
-  //       setLoadingBranches(false);
-  //       return; // Error will be set in verifyUrl
-  //     }
-  //     const { sanitizedUsername, sanitizedRepo } = result;
-  //     console.log("username", sanitizedUsername, "repo", sanitizedRepo);
-  //     const branches = await getRepoBranches(
-  //       sanitizedUsername,
-  //       sanitizedRepo,
-  //       localStorage.getItem("github_pat") ?? undefined
-  //     );
-
-  //     console.log("branches", branches);
-
-  //     if (branches.error) {
-  //       setError(branches.error);
-  //       setBranches([]);
-  //       setLoadingBranches(false);
-  //       setSelectedBranch(null);
-  //     } else {
-  //       setBranches(branches.branches || []);
-  //       if (branches.defaultBranch) {
-  //         setSelectedBranch(branches.defaultBranch);
-  //       }
-  //     }
-  //   };
-
-  //   const debounceTimeout = setTimeout(() => {
-  //     if (url) {
-  //       fetchBranches();
-  //     } else {
-  //       setBranches([]);
-  //       setSelectedBranch(null);
-  //     }
-  //     setError("");
-  //     setLoadingBranches(false);
-  //   }, 2000); // 2 seconds debounce delay
-  //   return () => clearTimeout(debounceTimeout);
-  // }, [url]);
-
-  
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
