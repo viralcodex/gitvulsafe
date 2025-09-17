@@ -16,6 +16,7 @@ import {
 } from "@/constants/constants";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import EmptyCard from "./empty-card";
 
 interface FixPlanCardProps {
   onClose: () => void;
@@ -410,9 +411,8 @@ const FixPlanCard = (props: FixPlanCardProps) => {
         </CardHeader>
         <CardContent className="h-full gap-0 overflow-y-scroll scrollbar-background-bg scrollbar-background-thumb py-2">
           <div className="pl-3 pr-1 py-2">
-            {/* <div className="py-2">{ecosystemOptions}</div> */}
             <ul className="list-inside ml-0">
-              {manifestData?.dependencies &&
+              {manifestData?.dependencies ? (
                 Object.entries(manifestData.dependencies).map(
                   ([filename, dependencies]) => {
                     return (
@@ -569,7 +569,12 @@ const FixPlanCard = (props: FixPlanCardProps) => {
                       </li>
                     );
                   }
-                )}
+                )
+              ) : (
+                <div className="w-full flex items-center justify-center flex-col flex-grow">
+                  <EmptyCard size={400} />
+                </div>
+              )}
             </ul>
           </div>
         </CardContent>

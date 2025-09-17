@@ -80,7 +80,6 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
                   </Badge>
                 )}
               </p>
-              !-- TODO later to indent content--
               <div className="">
                 <p
                   className={cn(

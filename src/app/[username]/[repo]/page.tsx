@@ -134,6 +134,13 @@ const Page = () => {
     }
   }, [repoUrl, username, repo, setSelectedBranch, setBranches]);
 
+  // Simple branch sync: only update dropdown when URL branch actually changes
+  useEffect(() => {
+    if (branch && branches.length > 0 && branches.includes(branch)) {
+      setSelectedBranch(branch);
+    }
+  }, [branch, branches, setSelectedBranch]);
+
   // Handle file header state based on the file prop
   useEffect(() => {
     if (file) {
@@ -439,6 +446,7 @@ const Page = () => {
             error={error}
             isDiagramExpanded={isDiagramExpanded}
             inputUrl={inputUrl}
+            branch={branch}
             branches={branches}
             selectedBranch={selectedBranch}
             loadingBranches={loadingBranches}
@@ -463,7 +471,7 @@ const Page = () => {
         )}
         <div
           id="Header Buttons"
-          className={`flex flex-row items-center justify-center w-full gap-2 mb-4 pt-4`}
+          className={`flex flex-row items-center justify-center w-full gap-2 mt-4`}
         >
           {ecosystemOptions.length > 1 && (
             <div className="sm:w-[200px] w-[40%]">
@@ -483,7 +491,7 @@ const Page = () => {
           )}
           <div
             onClick={() => generateFixPlan(false)}
-            className="cursor-pointer gap-x-2 w-[45%] sm:w-[200px] flex flex-row items-center justify-center bg-background p-2 border-1 border-accent rounded-md"
+            className="cursor-pointer gap-x-2 w-[45%] sm:w-[200px] flex flex-row items-center justify-center bg-background py-3 border-1 border-accent rounded-md"
           >
             <Image
               priority
@@ -493,9 +501,10 @@ const Page = () => {
               width={28}
               height={28}
             />
-            <p className="py-1">Generate Fix Plan</p>
+            <p className="sm:text-md text-sm">Generate Fix Plan</p>
           </div>
         </div>
+        {error && <div className="text-red-500 text-center py-5">{error}</div>}
         <DepDiagram
           svgRef={svgRef}
           graphData={graphData}
@@ -516,7 +525,6 @@ const Page = () => {
           generateFixPlan={generateFixPlan}
           error={error}
         />
-        {error && <div className="text-red-500 text-center">{error}</div>}
       </div>
       {selectedNode && isNodeClicked && (
         <DependencyDetailsCard

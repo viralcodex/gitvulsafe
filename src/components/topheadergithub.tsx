@@ -16,6 +16,7 @@ interface TopHeaderProps {
   isLoading?: boolean;
   error?: string;
   isDiagramExpanded?: boolean;
+  branch: string;
   branches: string[];
   selectedBranch: string | null;
   loadingBranches: boolean;
@@ -138,7 +139,7 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
             className="sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm cursor-pointer"
             type="submit"
             disabled={
-              isLoading || !inputUrl || !branches.length || loadingBranches
+              isLoading || loadingBranches || !inputUrl || !branches.length
             }
           >
             {isLoading ? (

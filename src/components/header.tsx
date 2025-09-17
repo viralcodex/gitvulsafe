@@ -14,8 +14,8 @@ const Header = () => {
       <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-8">
         <Link href="/" className="flex items-center space-x-2">
           <span className="text-lg font-bold">
-            <span className="text-gray-200">Dep</span>
-            <span className="text-blue-500">Sec</span>
+            <span className="text-gray-200">Git</span>
+            <span className="text-blue-500">Vulsafe</span>
           </span>
         </Link>
         <nav>

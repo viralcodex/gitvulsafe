@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Badge } from "./ui/badge";
+import EmptyCard from "./empty-card";
 
 interface DepDiagramProps {
   svgRef: React.RefObject<SVGSVGElement | null>;
@@ -742,15 +743,17 @@ const DepDiagram = ({
         ) : (
           <div className="relative" style={{ width, height }}>
             {getNodePathBadge()}
-            <svg
-              ref={svgRef}
-              scale={scale}
-              className={cn(
-                "border-1 border-accent rounded-xl bg-black/50 flex h-full w-full",
-                isDragging ? "cursor-grabbing" : "cursor-grab"
-              )}
-            ></svg>
-            {!isLoading && !error && (
+            {svgRef.current ? (
+              <svg
+                ref={svgRef}
+                scale={scale}
+                className={cn(
+                  "border-1 border-accent rounded-xl bg-black/50 flex h-full w-full",
+                  isDragging ? "cursor-grabbing" : "cursor-grab"
+                )}
+              ></svg>
+            ) :<EmptyCard size={600}/>}
+            {!isLoading && !error && !svgRef.current && (
               <div>
                 <div className="absolute bottom-16 right-4 flex flex-col items-center justify-center gap-2">
                   <Tooltip>

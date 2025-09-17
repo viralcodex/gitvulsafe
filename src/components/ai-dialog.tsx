@@ -38,22 +38,18 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
       <DialogContent className="border-[3px] border-black bg-background p-6 shadow-[8px_8px_0_0_#000000] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary-foreground">
-            Enter OpenAI API Key
+            Enter Gemini API Key
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="text-sm">
-            GitDiagram offers infinite free diagram generations! You can also
-            provide an OpenAI API key to generate diagrams at your own cost. The
-            key will be stored locally in your browser.
-            {/* GitDiagram offers one free diagram generation. For additional
-            diagrams, you&apos;ll need to provide an OpenAI API key. The key
-            will be stored locally in your browser. */}
+            You can provide an Gemini API key to generate AI insights and Fix
+            Plans. The key will be stored locally in your browser.
             <br />
             <br />
-            <span className="font-medium">Get your OpenAI API key </span>
+            <span className="font-medium">Get your Gemini API key </span>
             <Link
-              href="https://platform.openai.com/api-keys"
+              href="https://aistudio.google.com/app/apikey"
               className="underline text-primary-foreground transition-colors duration-200 hover:text-muted-foreground"
             >
               here
@@ -66,11 +62,12 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
             </summary>
             <div className="animate-accordion-down mt-2 space-y-2 overflow-hidden pl-2">
               <p>
-                Your API key will be stored locally in your browser and used
-                only for generating diagrams. You can also self-host this app by
-                following the instructions in the{" "}
+                All your API keys are stored locally in your browser and not
+                used by me in any manner. If you still don&apos;t feel like
+                sharing your key, You can also self-host this app by following
+                the instructions here...{" "}
                 <Link
-                  href="https://github.com/ahmedkhaleel2004/gitdiagram"
+                  href="https://github.com/viralcodex/gitvulsafe#readme"
                   className="underline text-primary-foreground dark:text-[hsl(var(--text-color-link))] transition-colors duration-200 hover:text-muted-foreground"
                 >
                   README
@@ -81,7 +78,7 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
           </details>
           <Input
             type="password"
-            placeholder="sk-..."
+            placeholder="AI..."
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="flex-1 rounded-md border-[3px] border-black px-3 py-2 text-base font-bold shadow-[4px_4px_0_0_#000000] placeholder:text-base placeholder:font-normal"
@@ -98,7 +95,7 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={!apiKey.startsWith("sk-")}
+                disabled={!apiKey.startsWith("AI")}
                 className="border-[3px] bg-muted text-accent border-black px-4 py-2 shadow-[4px_4px_0_0_#000000] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-background disabled:opacity-50"
               >
                 Save Key
