@@ -13,14 +13,14 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Dep Hound",
+  title: "GitVulSafe",
   description: "A tool for analysing dependencies for security vulnerabilities",
   openGraph: {
-    title: "Dep Hound",
+    title: "GitVulSafe",
     description:
       "A tool for analysing dependencies for security vulnerabilities",
-    url: "https://dephound.com", 
-    siteName: "Dep Hound",
+    url: "https://GitVulSafe.com",
+    siteName: "GitVulSafe",
   },
   keywords: [
     "dependency analysis",
@@ -43,11 +43,7 @@ export const metadata: Metadata = {
     "cargo",
     "nuget",
   ],
-  authors: [
-    {name: "Aviral Shukla",
-      url: "https://github.com/viralcodex"
-    }
-  ]
+  authors: [{ name: "Aviral Shukla", url: "https://github.com/viralcodex" }],
 };
 
 export default function RootLayout({

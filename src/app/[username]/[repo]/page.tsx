@@ -3,9 +3,9 @@
 import { AppSidebar } from "@/components/dependency-list";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useGraph } from "@/hooks/useGraph";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import TopHeaderGithub from "../../components/topheadergithub";
+import TopHeaderGithub from "../../../components/topheadergithub";
 import DepDiagram from "@/components/dependency-diagram";
 import {
   GraphNode,
@@ -23,10 +23,14 @@ import { Dropdown } from "@/components/ui/dropdown";
 import FixPlanCard from "@/components/fix-plan-card";
 
 const Page = () => {
+  // const branch = useSearchParams().get("branch") || "";
+  // const username = useSearchParams().get("username") || "";
+  // const repo = useSearchParams().get("repo") || "";
+  // const file = useSearchParams().get("file") || "";
+  const username = useParams<{ username: string; repo: string }>().username;
+  const repo = useParams<{ username: string; repo: string }>().repo;
   const branch = useSearchParams().get("branch") || "";
-  const username = useSearchParams().get("username") || "";
-  const repo = useSearchParams().get("repo") || "";
-  const file = useSearchParams().get("file") || "";
+  const file = username?.includes("file_") ? decodeURIComponent(repo) : "";
 
   const [error, setError] = useState<string>("");
   const [isNodeClicked, setIsNodeClicked] = useState<boolean>(false);
@@ -120,7 +124,9 @@ const Page = () => {
   useEffect(() => {
     if (repoUrl !== null) {
       const currentRepoFromParams =
-        username && repo ? `https://github.com/${username}/${repo}` : null;
+        !username.includes("file_upload") && username && repo
+          ? `https://github.com/${username}/${repo}`
+          : null;
       if (repoUrl !== currentRepoFromParams) {
         setSelectedBranch(null);
         setBranches([]);
@@ -187,7 +193,7 @@ const Page = () => {
     setIsDiagramExpanded(false);
   }, [username, repo, branch, file]);
 
-  const omMessage = useCallback((message: SSEMessage) => {
+  const onMessage = useCallback((message: SSEMessage) => {
     console.log("SSE Message:", message);
 
     if (
@@ -245,7 +251,7 @@ const Page = () => {
           username,
           repo,
           selectedBranch ?? branch,
-          omMessage,
+          onMessage,
           onError,
           onComplete
         );
@@ -268,7 +274,7 @@ const Page = () => {
       repo,
       selectedBranch,
       branch,
-      omMessage,
+      onMessage,
       onError,
       onComplete,
     ]
@@ -311,7 +317,7 @@ const Page = () => {
 
   // Update inputUrl when username, repo, or branch changes
   useEffect(() => {
-    if (username && repo) {
+    if (username && repo && !username.includes("file_upload")) {
       const url = `https://github.com/${username}/${repo}`;
       setInputUrl(url);
       setDebouncedUrl(url);
@@ -480,8 +486,9 @@ const Page = () => {
             className="cursor-pointer gap-x-2 w-[45%] sm:w-[200px] flex flex-row items-center justify-center bg-background p-2 border-1 border-accent rounded-md"
           >
             <Image
+              priority
               className="text-accent"
-              src="genai.svg"
+              src="/genai.svg"
               alt="Generate Fix Plan"
               width={28}
               height={28}

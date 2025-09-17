@@ -21,9 +21,9 @@ const HeaderToggle = ({ setIsFileHeaderOpen, from }: HeaderToggleProps) => {
   };
   const getFileLogo = () => {
     if (from === "file") {
-      return "file-logo.svg";
+      return "/file-logo.svg";
     } else {
-      return "github.svg";
+      return "/github.svg";
     }
   };
   return (

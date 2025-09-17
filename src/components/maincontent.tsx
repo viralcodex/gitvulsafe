@@ -76,8 +76,9 @@ const MainContent = () => {
         toast.error("Please wait for the file to be uploaded.");
         return;
       }
-      // If a file is selected, redirect to the analysis page with the file
-      router.push(`/analyse?file=${encodeURIComponent(newFileName)}`);
+      // If a file is selected, redirect to the analysis page with the file using username/repo style
+      // Use "file" as username and filename as repo to match the [username]/[repo] pattern
+      router.push(`/file_upload/${encodeURIComponent(newFileName)}`);
       setUploaded(true);
       return;
     }
@@ -93,11 +94,9 @@ const MainContent = () => {
 
     if (url && !file)
       router.push(
-        `/analyse?username=${encodeURIComponent(
-          sanitizedUsername
-        )}&repo=${encodeURIComponent(
-          sanitizedRepo
-        )}${`&branch=${encodeURIComponent(selectedBranch!)}`}`
+        `/${encodeURIComponent(sanitizedUsername)}/${encodeURIComponent(sanitizedRepo)}?branch=${encodeURIComponent(
+          selectedBranch!
+        )}`
       );
   };
 

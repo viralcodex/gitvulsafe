@@ -341,7 +341,8 @@ const FixPlanCard = (props: FixPlanCardProps) => {
           <div className="flex flex-row items-center justify-between w-full">
             <div className="flex flex-row items-center gap-x-2">
               <Image
-                src="genaibutton.svg"
+                priority
+                src="/genaibutton.svg"
                 alt="GenAI Glowing Button"
                 width={48}
                 height={48}

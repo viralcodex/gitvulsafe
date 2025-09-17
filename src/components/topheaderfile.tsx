@@ -63,7 +63,7 @@ const TopHeaderFile = (props: TopHeaderFileProps) => {
     setLoading(true);
     setError("");
     resetGraphSvg();
-    router.push(`/analyse?file=${encodeURIComponent(newFileName!)}`);
+    router.push(`/file_upload/${encodeURIComponent(newFileName)}`);
   };
 
   return (
