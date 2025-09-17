@@ -193,14 +193,14 @@ const FloatingAiForm = () => {
       setError("Failed to submit prompt");
       toast.error("Failed to submit prompt. Please try again later.");
       return;
-    } finally{
+    } finally {
       setLoading(false);
     }
     if (window.getSelection) {
       window.getSelection()?.removeAllRanges();
     }
   };
-  
+
   // Function to parse the AI response and display it
   const parseResponse = (response: string) => {
     const parsedSummary = JSON.parse(response);
@@ -288,7 +288,7 @@ const FloatingAiForm = () => {
               type="submit"
               className={cn(
                 "flex flex-row items-center border-1 border-accent justify-center bg-accent-foreground rounded w-[20%] transition cursor-pointer",
-                (!prompt.trim()) && "opacity-50 cursor-not-allowed"
+                !prompt.trim() && "opacity-50 cursor-not-allowed"
               )}
             >
               {loading ? (
@@ -297,10 +297,10 @@ const FloatingAiForm = () => {
                   size={24}
                   strokeWidth={3}
                 />
-              )
-               : (
+              ) : (
                 <Image
-                  src="genaibutton.svg"
+                  priority
+                  src="/genaibutton.svg"
                   alt="Generate Fix Plan"
                   width={52}
                   height={52}

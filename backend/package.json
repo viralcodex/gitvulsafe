@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Backend service for the DepHound application",
+  "description": "Backend service for the GitSec application",
   "main": "index.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon server.ts",

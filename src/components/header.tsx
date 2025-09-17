@@ -22,7 +22,8 @@ const Header = () => {
           <ul className="flex space-x-4">
             <li className="flex flex-row items-center space-x-1">
               <Image
-                src="github.svg"
+                priority
+                src="/github.svg"
                 alt="DepSec Logo"
                 width={20}
                 height={20}
