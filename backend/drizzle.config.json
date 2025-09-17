@@ -1,8 +1,0 @@
-{
-  "schema": "../backend/db/schema.ts",
-  "out": "./migrations",
-  "dialect": "postgresql",
-  "dbCredentials": {
-    "url": "postgresql://depsec:mypassword@localhost:5432/depsec"
-  }
-}

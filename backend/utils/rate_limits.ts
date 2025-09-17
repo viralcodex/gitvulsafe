@@ -28,7 +28,7 @@ export const aiRateLimiter = rateLimit({
 
 export const fixPlanRateLimiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 10 * 60 * 1000, // 20 minutes
-  max: Number(process.env.FIX_PLAN_RATE_LIMIT_MAX) || 5, // limit each IP to 5 requests per windowMs
+  max: Number(process.env.FIX_PLAN_RATE_LIMIT_MAX) || 50, // limit each IP to 50 requests per windowMs
   message: {
     error: "Too many requests, please try again later in 10 minutes.",
   },

@@ -6,7 +6,15 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon server.ts",
     "build": "cross-env NODE_ENV=production tsc",
-    "start": "cross-env NODE_ENV=production node dist/server.js"
+    "start": "cross-env NODE_ENV=production node dist/server.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:pull": "drizzle-kit pull",
+    "db:studio": "drizzle-kit studio",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -39,7 +47,7 @@
     "@types/node": "^24.0.10",
     "@types/xml2js": "^0.4.14",
     "cross-env": "^10.0.0",
-    "drizzle-kit": "^0.18.1",
+    "drizzle-kit": "^0.31.4",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",
     "ts-jest": "^29.4.0",

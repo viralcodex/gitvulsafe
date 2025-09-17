@@ -8,8 +8,8 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || "development",
   googleApiKey: process.env.GOOGLE_API_KEY ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",
-  origin: process.env.ORIGIN ?? "http://localhost:3000",
 };
 
 export const isProduction = config.nodeEnv === "production";
-export const isDevelopment = config.nodeEnv === "development";
+
+export const origin = isProduction ? process.env.PROD_ORIGIN : process.env.DEV_ORIGIN;
