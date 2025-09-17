@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/dependency-list";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useGraph } from "@/hooks/useGraph";
 import { useParams, useSearchParams } from "next/navigation";
-import { useState, useEffect, useRef, useMemo, useCallback, use } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import TopHeaderGithub from "../../../components/topheadergithub";
 import DepDiagram from "@/components/dependency-diagram";
 import {
