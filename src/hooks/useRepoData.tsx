@@ -70,17 +70,19 @@ export const useRepoData = (url: string | null) => {
         console.log('Received branches:', branchesResponse.branches?.length, 'hasMore:', branchesResponse.hasMore, 'page:', page);
         // For first page, replace branches. For subsequent pages, append them
         if (page === 1) {
-          setBranches(branchesResponse.branches || []);
-          setSelectedBranch(branchesResponse.defaultBranch || null);
+          if(branchesResponse.defaultBranch && !branchesResponse.branches?.includes(branchesResponse.defaultBranch)) {
+            setBranches([branchesResponse.defaultBranch, ...(branchesResponse.branches || [])]);
+          }
+          else
+          {
+            setBranches(branchesResponse.branches || []);
+          }
+          setSelectedBranch(branchesResponse.defaultBranch ?? null);
         } else {
           setBranches(prevBranches => {
             const newBranchesToAdd = branchesResponse.branches || [];
             console.log('Previous branches:', prevBranches.length, 'New branches to add:', newBranchesToAdd);
-            // Check for duplicates before adding
-            const duplicates = newBranchesToAdd.filter(branch => prevBranches.includes(branch));
-            if (duplicates.length > 0) {
-              console.warn('Found duplicate branches:', duplicates);
-            }
+            
             // Remove duplicates by using Set
             const uniqueBranches = Array.from(new Set([...prevBranches, ...newBranchesToAdd]));
             console.log('Total branches now:', uniqueBranches.length, 'Duplicates removed:', prevBranches.length + newBranchesToAdd.length - uniqueBranches.length);

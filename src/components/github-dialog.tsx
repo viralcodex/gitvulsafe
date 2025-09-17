@@ -12,11 +12,7 @@ interface GithubDialogProps {
   onSubmit: (pat: string) => void;
 }
 
-export function GithubDialog({
-  isOpen,
-  onClose,
-  onSubmit,
-}: GithubDialogProps) {
+export function GithubDialog({ isOpen, onClose, onSubmit }: GithubDialogProps) {
   const [pat, setPat] = useState<string>("");
 
   useEffect(() => {
@@ -47,16 +43,10 @@ export function GithubDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="text-sm">
-            To enable private repositories, you&apos;ll need to provide a GitHub
-            Personal Access Token with repo scope. The token will be stored
-            locally in your browser. Find out how{" "}
-            <Link
-              href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
-              className="underline text-primary-foreground transition-colors duration-200 hover:text-muted-foreground"
-            >
-              here
-            </Link>
-            .
+            To enable private repositories and increased request limits (5000
+            req/hour), you&apos;ll need to provide a GitHub Personal Access
+            Token with repo scope. This token is only used for making API calls
+            to Github API and it is stored locally in your browser.
           </div>
           <details className="group text-sm [&>summary:focus-visible]:outline-none">
             <summary className="cursor-pointer font-medium text-primary-foreground hover:text-muted-foreground">
@@ -64,11 +54,12 @@ export function GithubDialog({
             </summary>
             <div className="animate-accordion-down mt-2 space-y-2 overflow-hidden pl-2">
               <p>
-                Take note that the diagram data will be stored in my database
-                (not that I would use it for anything anyways). You can also
-                self-host this app by following the instructions in the{" "}
+                The Github PAT you provide is stored locally in your browser and
+                not used by me in any manner. If you still don&apos;t feel like
+                sharing your token, You can also self-host this app by following
+                the instructions here...{" "}
                 <Link
-                  href="https://github.com/viralcodex/depsec"
+                  href="https://github.com/viralcodex/gitvulsafe#readme"
                   className="underline text-primary-foreground dark:text-[hsl(var(--text-color-link))] transition-colors duration-200 hover:text-muted-foreground"
                 >
                   README

@@ -377,7 +377,7 @@ class AgentsService {
     );
 
     console.log("FIX PLAN");
-    console.dir(result, { depth: null });
+    // console.dir(result, { depth: null });
     return result;
   }
 

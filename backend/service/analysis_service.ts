@@ -526,7 +526,6 @@ class AnalysisService {
 
     const analysedDependencies: DependencyGroups =
       await this.getAnalyzedDependencies(dependenciesWithChildren);
-    // Here you would typically call a vulnerability database API to get vulnerabilities for each dependency
 
     return {
       dependencies: analysedDependencies,
