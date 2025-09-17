@@ -3,7 +3,7 @@ import cors from "cors";
 import multer from "multer";
 import helmet from "helmet";
 import morgan from "morgan";
-import { config, isProduction } from "./config/env";
+import { config, isProduction, origin } from "./config/env";
 import { sanitize, extractSanitizedString, sanitizeFileName } from "./utils/utils";
 import {
   getCachedAnalysis,
@@ -28,7 +28,6 @@ const app = express();
 const PORT = config.port || 8080;
 const upload = multer();
 
-// Security middleware - stricter in production
 if (isProduction) {
   app.use(
     helmet({
@@ -48,7 +47,6 @@ if (isProduction) {
     })
   );
 }
-// Development - more permissive helmet settings
 else {
   app.use(
     helmet({
@@ -58,11 +56,9 @@ else {
   );
 }
 
-// CORS configuration
 app.use(
   cors({
-    origin: isProduction ? [config.origin] : "*",
-    credentials: true,
+    origin: origin,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -418,7 +414,7 @@ app.get("/fixPlan", fixPlanRateLimiter, (req: Request, res: Response) => {
     const timeout = setTimeout(() => {
       res.write(`data: ${JSON.stringify({ error: "Request timeout" })}\n\n`);
       res.end();
-    }, 60000); // 60 seconds timeout
+    }, 300000); // 300 seconds timeout
 
     req.on("close", () => {
       console.log("Connection closed by client");
@@ -570,7 +566,7 @@ const server = app.listen(PORT, () => {
   console.log(`Started at: ${new Date().toISOString()}`);
 
   if (isProduction) {
-    console.log(`CORS origin: ${config.origin}`);
+    console.log(`CORS origin: ${origin}`);
     console.log(`Trust proxy: enabled`);
   } else {
     console.log(`CORS: allowing all origins (development)`);
