@@ -86,11 +86,9 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
 
     // Check if we're on the same page with same parameters
     const currentUrl = window.location.href;
-    const newUrl = `/analyse?username=${encodeURIComponent(
-      sanitizedUsername
-    )}&repo=${encodeURIComponent(
-      sanitizedRepo
-    )}&branch=${encodeURIComponent(selectedBranch!)}`;
+    const newUrl = `/${encodeURIComponent(sanitizedUsername)}/${encodeURIComponent(sanitizedRepo)}?branch=${encodeURIComponent(
+      selectedBranch!
+    )}`;
     
     if (currentUrl.includes(newUrl.slice(1))) { // Remove leading slash for includes check
       // Same URL - trigger refresh instead of navigation

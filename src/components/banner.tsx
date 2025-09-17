@@ -1,13 +1,14 @@
-import React from 'react'
-import Image from 'next/image'
+import React from "react";
+import Image from "next/image";
 
 const Banner = () => {
   return (
     <div className="mt-10 mb-5 relative">
       {/* Background SVG for large screens, hidden on small screens */}
-      <div className='relative'>
+      <div className="relative">
         <div className="hidden sm:block absolute -top-10 left-0 -z-10 w-[300px] h-[300px]">
           <Image
+            priority
             src="/file.svg"
             alt="Skull dotted image"
             fill
@@ -23,6 +24,6 @@ const Banner = () => {
       </div>
     </div>
   );
-}
+};
 
-export default Banner
+export default Banner;

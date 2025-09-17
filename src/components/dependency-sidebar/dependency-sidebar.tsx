@@ -256,7 +256,10 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
             : "w-[35%] p-1 h-[calc(100vh-4rem)] pr-1"
           : isMobile
             ? "w-full p-1 top-1/3 pr-1"
-            : isDiagramExpanded ? "top-1/4" : "top-[260px]" ,"z-10 p-1 pr-1"
+            : isDiagramExpanded
+              ? "top-1/4"
+              : "top-[260px]",
+        "z-10 p-1 pr-1"
       )}
     >
       <Card
@@ -348,7 +351,8 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                   className="rounded-t-none cursor-pointer flex items-center px-5 font-semibold"
                 >
                   <Image
-                    src={"genai.svg"}
+                    priority
+                    src={"/genai.svg"}
                     alt="AI Icon"
                     width={24}
                     height={24}

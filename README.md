@@ -1,22 +1,23 @@
-# DepHound.AI
-DepHound is a dependencies vulnerabilities visualizer with AI powered insights to help you resolve them and ship code more secure and faster.
+# GitVulSafe
+GitVulSafe is a dependencies vulnerabilities visualizer with AI powered insights to help you resolve them and ship code more secure and faster.
 
 # Features
  - Popular programming ecosystems supported (names from <a href='https://osv.dev/'>OSV.dev</a>)
-   - JS/TS (Node (npm)) (Tested)
-   - Python (PyPI) (Tested)
-   - Java (Maven) (Partially Tested)
-   - RubyGems (Gemfile) (Not tested)
-   - Dart (Pubspec) (Not Tested)
+   - JS/TS (Node (npm)) - package.json (Tested) 
+   - Python (PyPI) - requirements.txt(Tested)
+   - Java (Maven) - pom.xml (Partially Tested)
+   - RubyGems (Gemfile) - GemFile(Not tested)
+   - Dart (Pubspec) - PubSpec.yaml (Not Tested)
+
  - **Graph visualizations** for vulnerable dependencies with detailed information.
- - Upload a **manifest file** or **Github repository URL** with specific branch selection.
+ - Upload a **dependency manifest file** or **Github repository URL** with specific branch selection.
  - AI summary to help understand detailed and jargon-filled information in vulnerability information.
  - **Inline prompt** box to help you ask questions on selected text (VS-Code inspired inline support).
  - Generate an **AI Fix Plan** for your vulnerabilities to solve them at once with information.
 (Note: Currently, the Fix Plan describes individual steps for solving each dependency vulnerability, a detailed fix plan generation is currently in development)
 
 # How to run locally
-Clone the repository and open the repository in any text editor you like
+Clone the repository and open the repository in any text editor/IDE you like.
 ## Frontend
    - Run the command inside the root folder to install dependencies.
      
@@ -72,7 +73,7 @@ Clone the repository and open the repository in any text editor you like
   ```
 # Ideation and Motivation
 I came across <a href='https://gitdiagram.com/'>GitDiagram</a> where I made some contributions to the repository, I also had some idea to before this to build something like a visualisation for vulnerable dependencies, which can help people find, see and resolve them easily.
-So there began the development for **DepHound**. You will see the inspiration in my code.
+So there began the development for **GitVulSafe**. You will see the inspiration in my code.
 
 # AI Information
   Currently I am using Gemini AI API for the generation features using different JSON schemas to provide a structured and uniform response throughout.
@@ -80,18 +81,23 @@ So there began the development for **DepHound**. You will see the inspiration in
 # How it works
   Let's ask **GitDiagram** itself...
   <img width="5572" height="2916" alt="image" src="https://github.com/user-attachments/assets/3d7439b4-f7d2-4f2d-83e3-c7a2965f7c32" />
+  So, you either give your github repo url and select the branch or upload a file.
+  Then we parse your dependencies and fetch transitive dependencies of each of them from <a href='https://deps.dev/'>deps.dev</a> and vulnerabilities for each of them dependencies from <a href='https://osv.dev/'>OSV.dev</a>, combine all of them and return to the frontend.
 
 # Future Plans 
 I have a lot of things in mind, including:
-  - Improve performance to generate the graph, currently it takes a lot of time for big graph which have 100s of dependencies and all of them have 100s of vulnerabilities in them.
+  - Improve performance to generate the graph, currently it takes a lot of time for big graph which have 100s of dependencies and all of them have 100s of vulnerabilities in them, maybe split the responsibilities and then rewrite the backend.
   - Improve UI and UX for some parts that I feel need more polishing to keep the users informed.
   - Clustering in the graph to prevent cluttering and density of the graph.
   - Improve and provide filtering options for large graphs, as it does become cluttered (critical deps, low priority deps, etc)
   - Provide options to give users their own schemas for personalised AI responses so that suits them and their needs.
   - Provide an option to query the tree and find the information needed directly.
   - Support for different AI Platforms, not just Gemini (which is the most cost effective right now).
+  - A simpler CLI Tool so that people can run it in bash and terminals as well, which can provide a more secure and private usage experience.
 
 # Contributions and Bug Reporting
   - People are welcome to improve and support this project by contributing to the codebase.
   - Please create an issue for anything you want to be fixed or want to contribute for, so that it is easy for me and others to track and understand the request/contribution in detail.
-  - It may take some time for the PR to be reviewed as I have a full time job apart from this so please be patient.
+  - It may take some time for the PR to be reviewed as I do not do this full time so patience would be appreciated
+
+Thanks for stopping by.

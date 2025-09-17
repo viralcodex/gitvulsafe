@@ -89,7 +89,7 @@ app.use(generalRateLimiter);
 
 app.get("/", (req, res) => {
   res.json({
-    response: "DepHound backend is running!",
+    response: "GitVulSafe backend is running!",
     environment: config.nodeEnv,
     timestamp: new Date().toISOString(),
   });
@@ -558,7 +558,7 @@ process.on("SIGTERM", () => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`DepHound server started successfully!`);
+  console.log(`GitVulSafe server started successfully!`);
   console.log(`Environment: ${config.nodeEnv}`);
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(
