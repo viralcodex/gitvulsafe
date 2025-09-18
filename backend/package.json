@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon server.ts",
-    "build": "cross-env NODE_ENV=production && npm run lint:fix && tsc",
+    "build": "cross-env NODE_ENV=production && tsc",
     "start": "cross-env NODE_ENV=production node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
