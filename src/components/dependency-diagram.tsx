@@ -750,7 +750,7 @@ const DepDiagram = ({
               ></svg>
             ) : (
               <EmptyCard size={400} />
-            ) :<EmptyCard size={600}/>}
+            )}
             {!isLoading && !error && !svgRef.current && (
               <div>
                 <div className="absolute bottom-16 right-4 flex flex-col items-center justify-center gap-2">
