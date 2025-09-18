@@ -20,20 +20,20 @@ export interface ManifestFiles {
 }
 
 export interface ManifestFileContents {
-  [ecosystem: string]: {path:string, content: string}[];
+  [ecosystem: string]: { path: string; content: string }[];
 }
 
 export enum Ecosystem {
-  NPM = "npm",
-  PYPI = "PyPI",
-  MAVEN = "Maven",
-  GRADLE = "Gradle",
-  GO = "Go",
-  CARGO = "Cargo",
-  RUBYGEMS = "Rubygems",
-  COMPOSER = "Composer",
-  PUB = "Pub",
-  NULL = "null"
+  NPM = 'npm',
+  PYPI = 'PyPI',
+  MAVEN = 'Maven',
+  GRADLE = 'Gradle',
+  GO = 'Go',
+  CARGO = 'Cargo',
+  RUBYGEMS = 'Rubygems',
+  COMPOSER = 'Composer',
+  PUB = 'Pub',
+  NULL = 'null',
 }
 
 export interface TransitiveDependency {
@@ -43,13 +43,13 @@ export interface TransitiveDependency {
     target: number;
     requirement: string;
   }[];
-};
+}
 
 export interface Dependency {
   name: string;
   version: string;
   vulnerabilities?: Vulnerability[];
-  dependencyType?: "DIRECT" | "INDIRECT" | "SELF";
+  dependencyType?: 'DIRECT' | 'INDIRECT' | 'SELF';
   transitiveDependencies?: TransitiveDependency;
   ecosystem: Ecosystem;
 }
@@ -67,7 +67,7 @@ export interface DepsDevNode {
     version: string;
   };
   bundled: false;
-  relation: "DIRECT" | "INDIRECT" | "SELF";
+  relation: 'DIRECT' | 'INDIRECT' | 'SELF';
   errors: [];
 }
 
@@ -142,15 +142,15 @@ export interface FileDetails {
 }
 
 export const manifestFiles: { [ecosystem: string]: string } = {
-  npm: "package.json",
-  PiPY: "requirements.txt",
-  RubyGems: "Gemfile",
-  Maven: "pom.xml",
-  gradle: "build.gradle",
-  rust: "Cargo.toml",
-  php: "composer.json",
-  Pub: "pubspec.yaml",
-  elixir: "mix.exs",
+  npm: 'package.json',
+  PiPY: 'requirements.txt',
+  RubyGems: 'Gemfile',
+  Maven: 'pom.xml',
+  gradle: 'build.gradle',
+  rust: 'Cargo.toml',
+  php: 'composer.json',
+  Pub: 'pubspec.yaml',
+  elixir: 'mix.exs',
 };
 
 // Define types for AI response parts
@@ -174,4 +174,9 @@ export interface AiResponsePart {
   functionCall?: FunctionCall;
   executableCode?: ExecutableCode;
   functionResponse?: FunctionResponse;
+}
+
+// Extend Request interface to include multer file
+export interface MulterRequest extends Request {
+  file?: Express.Multer.File;
 }
