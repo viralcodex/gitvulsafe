@@ -8,8 +8,8 @@ import { getNewFileName } from "./utils";
  
 const baseUrl =
   process.env.NODE_ENV === "production"
-    ? process.env.NEXT_PUBLIC_API_PROD_URL
-    : process.env.NEXT_PUBLIC_API_DEV_URL;
+    ? process.env.NEXT_API_PROD_URL
+    : process.env.NEXT_API_DEV_URL;
 
 export async function getRepoBranches(
   username: string,
@@ -52,7 +52,8 @@ export async function getManifestFileContents(
 ): Promise<ManifestFileContentsApiResponse> {
   try {
     const url = new URL(`${baseUrl}/manifestData`);
-    const github_pat = localStorage.getItem("github_pat") ?? undefined;
+    const github_pat =
+      process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined;
 
     const response = await fetch(url, {
       method: "POST",
@@ -86,7 +87,8 @@ export async function analyseDependencies(
     const url = file
       ? new URL(`${baseUrl}/analyseFile`)
       : new URL(`${baseUrl}/analyseDependencies`);
-    const github_pat = localStorage.getItem("github_pat") ?? undefined;
+    const github_pat =
+      process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined;
 
     const response = await fetch(url, {
       method: "POST",
