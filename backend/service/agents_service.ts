@@ -371,8 +371,6 @@ class AgentsService {
       },
       { recursionLimit: Infinity },
     );
-
-    console.log('FIX PLAN');
     // console.dir(result, { depth: null });
     return result;
   }

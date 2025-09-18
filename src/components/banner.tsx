@@ -10,8 +10,9 @@ const Banner = () => {
           <Image
             priority
             src="/file.svg"
-            alt="Skull dotted image"
-            fill
+            alt="Decorative file icon"
+            width={300}
+            height={300}
             style={{ objectFit: "contain" }}
           />
         </div>

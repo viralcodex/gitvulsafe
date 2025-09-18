@@ -471,7 +471,7 @@ const Page = () => {
         )}
         <div
           id="Header Buttons"
-          className={`flex flex-row items-center justify-center w-full gap-2 mt-4`}
+          className={`flex flex-row items-center justify-center w-full gap-2 mt-4 mb-2`}
         >
           {ecosystemOptions.length > 1 && (
             <div className="sm:w-[200px] w-[40%]">
@@ -504,7 +504,7 @@ const Page = () => {
             <p className="sm:text-md text-sm">Generate Fix Plan</p>
           </div>
         </div>
-        {error && <div className="text-red-500 text-center py-5">{error}</div>}
+        {error && <div className="text-red-500 text-center py-2">{error}</div>}
         <DepDiagram
           svgRef={svgRef}
           graphData={graphData}
