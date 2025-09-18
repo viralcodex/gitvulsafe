@@ -58,7 +58,6 @@ const DepDiagram = ({
   onNodeClick,
   setIsDiagramExpanded,
 }: DepDiagramProps) => {
-
   const [centerNode, setCenterNode] = useState<GraphNode>();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -90,11 +89,11 @@ const DepDiagram = ({
 
     const calculatedHeight = isMobile
       ? isDiagramExpanded
-        ? windowSize.height - 150
-        : windowSize.height - 380
+        ? windowSize.height - 150 - 8
+        : windowSize.height - 380 - 8
       : isDiagramExpanded
-        ? windowSize.height - 150
-        : windowSize.height - 270;
+        ? windowSize.height - 150 - 8
+        : windowSize.height - 270 - 8;
 
     // Use a fixed scale value for layout calculations to prevent re-renders
     const layoutScale = selectedNodeId ? 0.8 : 0.7;
@@ -687,10 +686,7 @@ const DepDiagram = ({
   const handleZoomIn = () => {
     if (svgSelectionRef.current && zoomRef.current && svgRef.current) {
       const selection = d3.select(svgRef.current);
-      selection
-        .transition()
-        .duration(300)
-        .call(zoomRef.current.scaleBy, 1.5);
+      selection.transition().duration(300).call(zoomRef.current.scaleBy, 1.5);
     }
   };
 
@@ -729,7 +725,7 @@ const DepDiagram = ({
 
   return (
     <div className="">
-      <div className="w-full flex flex-col items-center justify-center">
+      <div className="w-full flex flex-col items-center justify-center py-2">
         {isLoading ? (
           <div
             className="flex flex-col items-center justify-center"
@@ -743,7 +739,7 @@ const DepDiagram = ({
         ) : (
           <div className="relative" style={{ width, height }}>
             {getNodePathBadge()}
-            {svgRef.current ? (
+            {graphData && selectedEcosystem && graphData[selectedEcosystem] ? (
               <svg
                 ref={svgRef}
                 scale={scale}
@@ -752,79 +748,85 @@ const DepDiagram = ({
                   isDragging ? "cursor-grabbing" : "cursor-grab"
                 )}
               ></svg>
-            ) :<EmptyCard size={600}/>}
-            {!isLoading && !error && !svgRef.current && (
-              <div>
-                <div className="absolute bottom-16 right-4 flex flex-col items-center justify-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild id="reset-zoom">
-                      <span>
-                        <Button
-                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75 disabled:bg-ring"
-                          onClick={handleZoomIn}
-                          disabled={scale >= 2.0}
-                        >
-                          <PlusIcon strokeWidth={4} />
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Zoom-in</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild id="reset-zoom">
-                      <span>
-                        <Button
-                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75 disabled:bg-ring"
-                          onClick={handleZoomOut}
-                          disabled={scale <= 0.5}
-                        >
-                          <MinusIcon strokeWidth={4} />
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Zoom-out</TooltipContent>
-                  </Tooltip>
-                </div>
-                <div className="absolute bottom-4 right-4 flex flex-row items-center justify-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild id="reset-zoom">
-                      <span>
-                        <Button
-                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75"
-                          onClick={handleResetZoom}
-                        >
-                          <RefreshCw strokeWidth={4} />
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Re-center</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild id="toggle-zoom">
-                      <span>
-                        <Button
-                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75"
-                          onClick={() => {
-                            if (setIsDiagramExpanded) {
-                              setIsDiagramExpanded(!isDiagramExpanded);
-                            }
-                          }}
-                        >
-                          {isDiagramExpanded ? (
-                            <Minimize strokeWidth={4} />
-                          ) : (
-                            <Maximize strokeWidth={4} />
-                          )}
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {isDiagramExpanded ? "Collapse" : "Expand"}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
+            ) : (
+              <EmptyCard size={400} />
             )}
+            {!isLoading &&
+              !error &&
+              graphData &&
+              selectedEcosystem &&
+              graphData[selectedEcosystem] && (
+                <div>
+                  <div className="absolute bottom-16 right-4 flex flex-col items-center justify-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild id="reset-zoom">
+                        <span>
+                          <Button
+                            className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75 disabled:bg-ring"
+                            onClick={handleZoomIn}
+                            disabled={scale >= 2.0}
+                          >
+                            <PlusIcon strokeWidth={4} />
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Zoom-in</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild id="reset-zoom">
+                        <span>
+                          <Button
+                            className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75 disabled:bg-ring"
+                            onClick={handleZoomOut}
+                            disabled={scale <= 0.5}
+                          >
+                            <MinusIcon strokeWidth={4} />
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Zoom-out</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="absolute bottom-4 right-4 flex flex-row items-center justify-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild id="reset-zoom">
+                        <span>
+                          <Button
+                            className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75"
+                            onClick={handleResetZoom}
+                          >
+                            <RefreshCw strokeWidth={4} />
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Re-center</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild id="toggle-zoom">
+                        <span>
+                          <Button
+                            className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75"
+                            onClick={() => {
+                              if (setIsDiagramExpanded) {
+                                setIsDiagramExpanded(!isDiagramExpanded);
+                              }
+                            }}
+                          >
+                            {isDiagramExpanded ? (
+                              <Minimize strokeWidth={4} />
+                            ) : (
+                              <Maximize strokeWidth={4} />
+                            )}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isDiagramExpanded ? "Collapse" : "Expand"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+              )}
           </div>
         )}
       </div>

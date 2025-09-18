@@ -10,6 +10,7 @@ import FloatingAiForm from "@/components/floating-ai-form";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin", "latin-ext"],
+  display: "auto", // Improves font loading performance
 });
 
 export const metadata: Metadata = {
@@ -53,6 +54,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} `}>
+      <head>
+        <link rel="preload" href="/bg.svg" as="image" type="image/svg+xml" />
+        <link rel="preload" href="/file.svg" as="image" type="image/svg+xml" />
+      </head>
       <body className="flex h-screen flex-col bg-background bg-repeat bg-[size:300px_300px] bg-[url('/bg.svg')] bg-blend-multiply relative">
         <ThemeProvider>
           <TextSelectionProvider>

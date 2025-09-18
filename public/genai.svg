@@ -1,1 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" aria-label="GenAI Stars Icon" viewBox="0 0 16 16"/>
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GenAI Stars Icon">
+  <defs>
+    <!-- Multi-stop gradient with animated stops -->
+    <linearGradient id="genai-stars-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7C3AED">
+        <animate attributeName="stop-color" values="#7C3AED;#3B82F6;#06B6D4;#7C3AED" dur="3s" repeatCount="1" />
+      </stop>
+      <stop offset="50%" stop-color="#3B82F6">
+        <animate attributeName="stop-color" values="#3B82F6;#06B6D4;#7C3AED;#3B82F6" dur="3s" repeatCount="1" />
+      </stop>
+      <stop offset="100%" stop-color="#06B6D4">
+        <animate attributeName="stop-color" values="#06B6D4;#7C3AED;#3B82F6;#06B6D4" dur="3s" repeatCount="1" />
+      </stop>
+    </linearGradient>
+
+    <!-- Outer glow filter -->
+    <filter id="genai-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
+      <feFlood flood-color="#3B82F6" flood-opacity="0.55" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  
+  
+  <!-- Animate scale & fade-in -->
+  <g filter="url(#genai-glow)" opacity="0" transform="scale(0.5)" transform-origin="center">
+    <animateTransform attributeName="transform" type="scale" from="0.5" to="1" dur="0.6s" fill="freeze" additive="replace"/>
+    <animate attributeName="opacity" from="0" to="1" dur="0.6s" fill="freeze"/>
+    
+    <!-- Icon path -->
+    <path fill="url(#genai-stars-grad)" stroke="white" stroke-width="0.4" stroke-linejoin="round"
+      d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828l.645-1.937zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.734 1.734 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.734 1.734 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.734 1.734 0 0 0 3.407 2.31l.387-1.162zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.156 1.156 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.156 1.156 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732L10.863.1z"/>
+  </g>
+</svg>
