@@ -750,6 +750,78 @@ const DepDiagram = ({
               ></svg>
             ) : (
               <EmptyCard size={400} />
+            ) :<EmptyCard size={600}/>}
+            {!isLoading && !error && !svgRef.current && (
+              <div>
+                <div className="absolute bottom-16 right-4 flex flex-col items-center justify-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild id="reset-zoom">
+                      <span>
+                        <Button
+                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75 disabled:bg-ring"
+                          onClick={handleZoomIn}
+                          disabled={scale >= 2.0}
+                        >
+                          <PlusIcon strokeWidth={4} />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom-in</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild id="reset-zoom">
+                      <span>
+                        <Button
+                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75 disabled:bg-ring"
+                          onClick={handleZoomOut}
+                          disabled={scale <= 0.5}
+                        >
+                          <MinusIcon strokeWidth={4} />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom-out</TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="absolute bottom-4 right-4 flex flex-row items-center justify-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild id="reset-zoom">
+                      <span>
+                        <Button
+                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75"
+                          onClick={handleResetZoom}
+                        >
+                          <RefreshCw strokeWidth={4} />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Re-center</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild id="toggle-zoom">
+                      <span>
+                        <Button
+                          className="p-4 rounded-md bg-muted-foreground text-background shadow hover:bg-accent cursor-pointer opacity-60 hover:opacity-100 transition-opacity duration-75"
+                          onClick={() => {
+                            if (setIsDiagramExpanded) {
+                              setIsDiagramExpanded(!isDiagramExpanded);
+                            }
+                          }}
+                        >
+                          {isDiagramExpanded ? (
+                            <Minimize strokeWidth={4} />
+                          ) : (
+                            <Maximize strokeWidth={4} />
+                          )}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isDiagramExpanded ? "Collapse" : "Expand"}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
             )}
             {!isLoading &&
               !error &&

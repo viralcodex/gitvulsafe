@@ -1,10 +1,12 @@
-import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
-import { GoogleGenAI } from "@google/genai";
-import { Dependency, DependencyApiResponse } from "../constants/constants";
-import { prompts } from "../prompts/prompts";
-import vulnerabilityFixResponseSchema from "../prompts/schemas/vulnerability_fix_plan_response_schema.json";
-import { parseAiResponseParts } from "../utils/utils";
-import { writeFileSync } from "fs";
+import { writeFileSync } from 'fs';
+
+import { GoogleGenAI } from '@google/genai';
+import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
+
+import { Dependency, DependencyApiResponse } from '../constants/constants';
+import { prompts } from '../prompts/prompts';
+import vulnerabilityFixResponseSchema from '../prompts/schemas/vulnerability_fix_plan_response_schema.json';
+import { parseAiResponseParts } from '../utils/utils';
 
 /**
  * FOR AI: This Agent Service uses LangGraph to handle agentic AI tasks.
@@ -39,12 +41,12 @@ class AgentsService {
   private progressCallback: (
     step: string,
     message: string,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
   ) => void;
 
   constructor(analysisData: DependencyApiResponse) {
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not set");
+      throw new Error('GEMINI_API_KEY is not set');
     }
     this.ai = new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY,
@@ -57,7 +59,7 @@ class AgentsService {
 
   flattenDependencies() {
     const dependencyAnalysisData = Object.entries(
-      this.analysisData.dependencies
+      this.analysisData.dependencies,
     ).flatMap(([filePath, deps]) => {
       return deps.map((dep) => ({
         ...dep,
@@ -70,7 +72,7 @@ class AgentsService {
         dep.transitiveDependencies?.nodes
           ?.filter((node) => {
             return (
-              node.dependencyType !== "SELF" &&
+              node.dependencyType !== 'SELF' &&
               node.vulnerabilities &&
               node.vulnerabilities.length > 0
             );
@@ -78,7 +80,7 @@ class AgentsService {
           .map((node) => ({
             ...node,
             filePath: dep.filePath,
-          })) || []
+          })) ?? []
       );
     });
 
@@ -88,14 +90,14 @@ class AgentsService {
     ];
 
     console.log(
-      "Flattened dependencies:",
+      'Flattened dependencies:',
       this.flattenedAnalysisData,
-      this.flattenedAnalysisData.length
+      this.flattenedAnalysisData.length,
     );
   }
 
   dependencyAnalysisAgent() {
-    return async (state: AgentState) => {
+    return (state: AgentState) => {
       // Check if we've processed all dependencies
       if (state.currentIndex >= this.flattenedAnalysisData.length) {
         return {
@@ -106,20 +108,20 @@ class AgentsService {
 
       const currentDependency = this.flattenedAnalysisData[state.currentIndex];
       console.log(
-        `Processing dependency ${state.currentIndex + 1}/${this.flattenedAnalysisData.length}: ${currentDependency.name}`
+        `Processing dependency ${state.currentIndex + 1}/${this.flattenedAnalysisData.length}: ${currentDependency.name}`,
       );
 
       // Send progress update
       this.progressCallback(
-        "dependency_analysis",
+        'dependency_analysis',
         `Processing dependency ${state.currentIndex + 1}/${this.flattenedAnalysisData.length}: ${currentDependency.name}@${currentDependency.version}`,
         {
           dependencyIndex: state.currentIndex,
           dependencyName: currentDependency.name,
           dependencyVersion: currentDependency.version,
           totalDependencies: this.flattenedAnalysisData.length,
-          vulnerabilityCount: currentDependency.vulnerabilities?.length || 0,
-        }
+          vulnerabilityCount: currentDependency.vulnerabilities?.length ?? 0,
+        },
       );
 
       return {
@@ -143,12 +145,11 @@ class AgentsService {
 
       // Skip if no dependency data or no vulnerabilities
       if (
-        !dependencyData ||
-        !dependencyData.vulnerabilities ||
+        !dependencyData?.vulnerabilities ||
         dependencyData.vulnerabilities.length === 0
       ) {
         console.log(
-          `Skipping ${dependencyData?.name || "unknown"} - no vulnerabilities`
+          `Skipping ${dependencyData?.name || 'unknown'} - no vulnerabilities`,
         );
         return {
           ...state,
@@ -160,57 +161,53 @@ class AgentsService {
 
       try {
         console.log(
-          `Generating fix plan for ${dependencyData.name}@${dependencyData.version}`
+          `Generating fix plan for ${dependencyData.name}@${dependencyData.version}`,
         );
 
         // Send progress update for vulnerability analysis
         this.progressCallback(
-          "vulnerability_analysis_started",
+          'vulnerability_analysis_started',
           `Analyzing vulnerabilities for ${dependencyData.name}@${dependencyData.version} (${dependencyData.vulnerabilities.length} vulnerabilities found)`,
           {
             dependencyName: dependencyData.name,
             dependencyVersion: dependencyData.version,
             vulnerabilityCount: dependencyData.vulnerabilities.length,
-            stage: "analyzing",
-          }
+            stage: 'analyzing',
+          },
         );
 
         const response = await this.ai.models.generateContent({
-          model: "gemini-2.5-flash-lite",
+          model: 'gemini-2.5-flash-lite',
           contents: fixPrompt.template.replace(
-            "{{dependencyData}}",
-            JSON.stringify(dependencyData)
+            '{{dependencyData}}',
+            JSON.stringify(dependencyData),
           ),
           config: {
-            systemInstruction: `${fixPrompt.system}\n\nConstraints: ${fixPrompt.constraints.join(" ")}`,
-            responseMimeType: "application/json",
+            systemInstruction: `${fixPrompt.system}\n\nConstraints: ${fixPrompt.constraints.join(' ')}`,
+            responseMimeType: 'application/json',
             responseJsonSchema: vulnerabilityFixResponseSchema,
           },
         });
 
-        if (
-          !response ||
-          !response.candidates ||
-          !response.candidates[0]?.content?.parts
-        ) {
+        if (!response?.candidates?.[0]?.content?.parts) {
           this.progressCallback(
-            "vulnerability_analysis_error",
+            'vulnerability_analysis_error',
             `Error: No response from AI model for ${dependencyData.name}@${dependencyData.version}`,
             {
               dependencyName: dependencyData.name,
               dependencyVersion: dependencyData.version,
-              stage: "error",
-            }
+              stage: 'error',
+            },
           );
 
           console.log(
-            `❌ No response from AI model for ${dependencyData.name}@${dependencyData.version}`
+            `No response from AI model for ${dependencyData.name}@${dependencyData.version}`,
           );
           //handle error
           return {
             ...state,
             errors: [
-              ...(state.errors || []),
+              ...(state.errors ?? []),
               `No response from AI model for ${dependencyData.name}`,
             ],
           };
@@ -221,7 +218,7 @@ class AgentsService {
         const parsedResponse = parseAiResponseParts(parts);
 
         const fixPlanData =
-          typeof parsedResponse === "string"
+          typeof parsedResponse === 'string'
             ? JSON.parse(parsedResponse)
             : parsedResponse;
 
@@ -231,38 +228,38 @@ class AgentsService {
 
         // Send progress update with the completed fix plan
         this.progressCallback(
-          "vulnerability_analysis_complete",
+          'vulnerability_analysis_complete',
           `Fix plan generated for ${dependencyData.name}@${dependencyData.version}`,
           {
             dependencyName: dependencyData.name,
             dependencyVersion: dependencyData.version,
             fixPlan: fixPlanData,
-            stage: "completed",
-          }
+            stage: 'completed',
+          },
         );
 
         console.log(
-          `✅ Generated fix plan for ${dependencyData.name}@${dependencyData.version}`
+          `✅ Generated fix plan for ${dependencyData.name}@${dependencyData.version}`,
         );
       } catch (error) {
         console.log(
           `❌ ERROR generating fix plan for ${dependencyData.name}:`,
-          error
+          error,
         );
         this.progressCallback(
-          "vulnerability_analysis_error",
-          `Error: Can't generate fix plan for ${dependencyData.name}@${dependencyData.version}: ${error instanceof Error ? error.message : "Unknown error"}`,
+          'vulnerability_analysis_error',
+          `Error: Can't generate fix plan for ${dependencyData.name}@${dependencyData.version}: ${error instanceof Error ? error.message : 'Unknown error'}`,
           {
             dependencyName: dependencyData.name,
             dependencyVersion: dependencyData.version,
-            stage: "error",
-          }
+            stage: 'error',
+          },
         );
         //handle error
         return {
           ...state,
           errors: [
-            ...(state.errors || []),
+            ...(state.errors ?? []),
             `Error: Couldn't generate fix plan for ${dependencyData.name}: ${error}`,
           ],
         };
@@ -275,17 +272,17 @@ class AgentsService {
   }
 
   referenceAgent() {
-    return async (state: AgentState) => {
+    return (state: AgentState) => {
       // TODO: Implement reference processing logic
       return {
         ...state,
-        referenceSummary: "Reference summary placeholder",
+        referenceSummary: 'Reference summary placeholder',
       };
     };
   }
 
   contextualizerAgent() {
-    return async (state: AgentState) => {
+    return (state: AgentState) => {
       const {
         dependencyData,
         currentIndex,
@@ -294,7 +291,7 @@ class AgentsService {
       } = state;
 
       console.log(
-        `ContextualizerAgent processing dependency ${currentIndex + 1}: ${dependencyData?.name}@${dependencyData?.version}`
+        `ContextualizerAgent processing dependency ${currentIndex + 1}: ${dependencyData?.name}@${dependencyData?.version}`,
       );
       console.log(`Reference Summary: ${referenceSummary}`);
 
@@ -302,7 +299,7 @@ class AgentsService {
       const nextIndex = currentIndex + 1;
 
       console.log(
-        `✅ Completed processing for ${dependencyData?.name}@${dependencyData?.version}, moving to index ${nextIndex}`
+        `Completed processing for ${dependencyData?.name}@${dependencyData?.version}, moving to index ${nextIndex}`,
       );
 
       // The final fix plan will be generated when all dependencies are processed
@@ -317,7 +314,6 @@ class AgentsService {
 
   //this handles the workflow orchestration using LangGraph
   createWorkflowAndOrchestrateAgents() {
-
     const AgentStateAnnotation = Annotation.Root({
       dependencyData: Annotation<Dependency>(),
       currentIndex: Annotation<number>(),
@@ -332,17 +328,17 @@ class AgentsService {
     const graph = new StateGraph(AgentStateAnnotation);
 
     graph
-      .addNode("DependencyAnalysisAgent", this.dependencyAnalysisAgent())
-      .addNode("VulnerabilityFixAgent", this.vulnerabilityFixAgent())
-      .addNode("ReferenceAgent", this.referenceAgent())
-      .addNode("ContextualizerAgent", this.contextualizerAgent())
-      .addEdge(START, "DependencyAnalysisAgent")
-      .addEdge("DependencyAnalysisAgent", "VulnerabilityFixAgent")
-      .addEdge("VulnerabilityFixAgent", "ReferenceAgent")
-      .addEdge("ReferenceAgent", "ContextualizerAgent")
-      .addConditionalEdges("ContextualizerAgent", (state: AgentState) => {
+      .addNode('DependencyAnalysisAgent', this.dependencyAnalysisAgent())
+      .addNode('VulnerabilityFixAgent', this.vulnerabilityFixAgent())
+      .addNode('ReferenceAgent', this.referenceAgent())
+      .addNode('ContextualizerAgent', this.contextualizerAgent())
+      .addEdge(START, 'DependencyAnalysisAgent')
+      .addEdge('DependencyAnalysisAgent', 'VulnerabilityFixAgent')
+      .addEdge('VulnerabilityFixAgent', 'ReferenceAgent')
+      .addEdge('ReferenceAgent', 'ContextualizerAgent')
+      .addConditionalEdges('ContextualizerAgent', (state: AgentState) => {
         if (state.currentIndex < this.flattenedAnalysisData.length) {
-          return "DependencyAnalysisAgent";
+          return 'DependencyAnalysisAgent';
         }
         return END;
       });
@@ -355,11 +351,11 @@ class AgentsService {
     progressCallback: (
       step: string,
       message: string,
-      data?: Record<string, unknown>
-    ) => void
+      data?: Record<string, unknown>,
+    ) => void,
   ) {
     const graph = this.createWorkflowAndOrchestrateAgents();
-    this.generateGraphImage(graph);
+    await this.generateGraphImage(graph);
 
     // Store the callback for use in agents
     this.progressCallback = progressCallback;
@@ -369,30 +365,28 @@ class AgentsService {
         dependencyData: {} as Dependency,
         currentIndex: 0,
         vulnerabilityFixPlans: {},
-        referenceSummary: "",
-        finalFixPlan: "",
+        referenceSummary: '',
+        finalFixPlan: '',
         errors: [],
       },
-      { recursionLimit: Infinity }
+      { recursionLimit: Infinity },
     );
-
-    console.log("FIX PLAN");
     // console.dir(result, { depth: null });
     return result;
   }
 
   async generateGraphImage(
-    graph: ReturnType<typeof StateGraph.prototype.compile>
+    graph: ReturnType<typeof StateGraph.prototype.compile>,
   ) {
-    console.log("Generating graph visualization...");
+    console.log('Generating graph visualization...');
     try {
       const graphImage = (await graph.getGraphAsync()).drawMermaidPng();
       const arrayBuffer = await (await graphImage).arrayBuffer();
-      const filePath = "./graph_image.png";
+      const filePath = './graph_image.png';
       writeFileSync(filePath, new Uint8Array(arrayBuffer));
       console.log(`Graph image saved to ${filePath}`);
     } catch (error) {
-      console.error("Error generating or saving graph image:", error);
+      console.error('Error generating or saving graph image:', error);
     }
   }
 }
