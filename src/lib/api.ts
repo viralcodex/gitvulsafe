@@ -8,8 +8,8 @@ import { getNewFileName } from "./utils";
  
 const baseUrl =
   process.env.NODE_ENV === "production"
-    ? process.env.NEXT_API_PROD_URL
-    : process.env.NEXT_API_DEV_URL;
+    ? process.env.NEXT_PUBLIC_API_PROD_URL
+    : process.env.NEXT_PUBLIC_API_DEV_URL;
 
 export async function getRepoBranches(
   username: string,
