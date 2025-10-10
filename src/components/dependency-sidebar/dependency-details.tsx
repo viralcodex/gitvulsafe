@@ -21,7 +21,7 @@ interface DependencyDetailsProps {
   allDetails?: Dependency | undefined;
   transitiveNodeDetails?: Dependency | undefined;
   matchedTransitiveNode?: Dependency | undefined;
-  isSidebarExpanded?: boolean;
+  isMobile?: boolean;
   getSeverityBadge: (score: string) => React.ReactNode;
 }
 
@@ -30,7 +30,7 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
     processedVulns,
     allDetails,
     transitiveNodeDetails,
-    isSidebarExpanded,
+    isMobile,
     getSeverityBadge,
   } = props;
 
@@ -43,9 +43,14 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
         <div className={"space-y-2"}>
           {processedVulns?.map((vuln, index) => (
             <div key={index} className="border-b border-accent">
-              <p className="text-md text-accent font-bold">
+              <p
+                className={cn(
+                  isMobile ? "text-sm" : "text-md",
+                  "text-accent font-bold"
+                )}
+              >
                 {vuln.summary
-                  ? removeMarkdown(vuln.summary, {
+                  ? removeMarkdown(vuln.summary.toTitleCase(), {
                       replaceLinksWithURL: true,
                       useImgAltText: true,
                       gfm: true,
@@ -63,7 +68,7 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
                 {vuln.fixAvailable ? (
                   <Badge
                     className={cn(
-                      isSidebarExpanded ? "text-sm" : "text-xs",
+                      isMobile ? "text-xs" : "text-sm",
                       "bg-green-600 text-white rounded-sm -m-0.5 mb-2"
                     )}
                   >
@@ -72,7 +77,7 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
                 ) : (
                   <Badge
                     className={cn(
-                      isSidebarExpanded ? "text-sm" : "text-xs",
+                      isMobile ? "text-xs" : "text-sm",
                       "bg-red-500 text-white rounded-sm -m-0.5 mb-2"
                     )}
                   >
@@ -83,7 +88,7 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
               <div className="">
                 <p
                   className={cn(
-                    isSidebarExpanded ? "text-sm" : "text-xs",
+                    isMobile ? "text-xs" : "text-sm",
                     "text-input pb-2"
                   )}
                 >
@@ -144,15 +149,16 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
                 </p>
                 {vuln.id && (
                   <div>
-                    <p className="text-md font-bold text-input pb-2">
+                    <p
+                      className={cn(
+                        isMobile ? "text-sm" : "text-md",
+                        "font-bold text-input pb-2"
+                      )}
+                    >
                       Vulnerability ID:
                     </p>
                     <div className="flex flex-row items-center gap-x-2">
-                      <p
-                        className={cn(
-                          isSidebarExpanded ? "text-sm" : "text-xs"
-                        )}
-                      >
+                      <p className={cn(isMobile ? "text-xs" : "text-sm")}>
                         {vuln.id}
                       </p>
                       <p>
@@ -172,36 +178,46 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
                 )}
                 {vuln.severityScore && (
                   <div className="text-muted-foreground py-2">
-                    <p className="font-semibold text-md text-accent">
+                    <p
+                      className={cn(
+                        isMobile ? "text-sm" : "text-md",
+                        "font-semibold text-accent"
+                      )}
+                    >
                       Severity
                     </p>
                     <p
                       className={cn(
-                        isSidebarExpanded ? "text-sm" : "text-xs",
+                        isMobile ? "text-xs" : "text-sm",
                         "font-medium mb-1"
                       )}
                     >
                       CVSS V3 Score: {"   "}
-                        {getSeverityBadge(
-                          vuln.severityScore.cvss_v3 ?? "unknown"
-                        )}
+                      {getSeverityBadge(
+                        vuln.severityScore.cvss_v3 ?? "unknown"
+                      )}
                     </p>
                     <p
                       className={cn(
-                        isSidebarExpanded ? "text-sm" : "text-xs",
+                        isMobile ? "text-xs" : "text-sm",
                         "font-medium"
                       )}
                     >
                       CVSS V4 Score: {"   "}
-                        {getSeverityBadge(
-                          vuln.severityScore.cvss_v4 ?? "unknown"
-                        )}
+                      {getSeverityBadge(
+                        vuln.severityScore.cvss_v4 ?? "unknown"
+                      )}
                     </p>
                   </div>
                 )}
                 {vuln.references && vuln.references.length > 0 && (
                   <div className="text-muted-foreground">
-                    <p className="font-semibold text-md text-accent">
+                    <p
+                      className={cn(
+                        isMobile ? "text-sm" : "text-md",
+                        "font-semibold text-accent"
+                      )}
+                    >
                       References:
                     </p>
                     {Object.entries(vuln.groupedRefs).map(([type, urls]) => (
@@ -221,7 +237,7 @@ const DependencyDetails = (props: DependencyDetailsProps) => {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className={cn(
-                                    isSidebarExpanded ? "text-sm" : "text-xs",
+                                    isMobile ? "text-xs" : "text-sm",
                                     "text-muted-foreground hover:underline"
                                   )}
                                 >

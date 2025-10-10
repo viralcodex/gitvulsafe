@@ -262,7 +262,7 @@ const FloatingAiForm = () => {
       }}
     >
       {response && mousePosition.y > window.innerHeight / 2 && (
-        <div className="py-3 px-3 mb-1 absolute border-x-1 border-t-1 bottom-full left-0 z-9999 bg-accent-foreground shadow-[2px_2px_10px_rgba(0,0,0,0.80)] rounded-t-sm text-sm wrap-normal overflow-y-auto max-h-[200px] scrollbar-background-thumb scrollbar-background-bg-2">
+        <div className="py-3 px-3 absolute border-x-1 border-t-1 bottom-full left-0 z-9999 bg-accent-foreground shadow-[2px_2px_10px_rgba(0,0,0,0.80)] rounded-t-sm text-sm wrap-normal overflow-y-auto max-h-[200px] scrollbar-background-thumb scrollbar-background-bg-2">
           {parseResponse(response)}
         </div>
       )}
