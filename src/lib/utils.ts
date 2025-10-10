@@ -1,5 +1,6 @@
 import { Dependency, manifestFiles } from "@/constants/constants";
 import { clsx, type ClassValue } from "clsx";
+import { RefObject } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -11,7 +12,7 @@ export const getNewFileName = (originalName: string): string => {
   const fileExtension = originalName.split(".").pop() || "";
   const baseName = originalName.replace(`.${fileExtension}`, "");
   return `${baseName}_${uuid}.${fileExtension}`;
-}
+};
 
 //verify the repoUrl format and extract username and repo
 export const verifyUrl = (
@@ -48,7 +49,8 @@ export const verifyFile = (
     return;
   }
 
-  if(file.size > 5 * 1024 * 1024) { // 5MB limit
+  if (file.size > 5 * 1024 * 1024) {
+    // 5MB limit
     setError("File size exceeds the 5MB limit");
     return;
   }
@@ -152,38 +154,38 @@ export const getRemediationPriorityConfig = (priority: string) => {
   switch (priority.toLowerCase()) {
     case "immediate":
       return {
-        text: "Immediate", 
+        text: "Immediate",
         icon: "Siren",
         className: "bg-red-600 text-white rounded-sm m-0 px-1.5",
       };
     case "urgent":
       return {
-        text: "High", 
+        text: "High",
         icon: "AlertTriangle",
         className: "bg-orange-600 text-white rounded-sm m-0 px-1.5",
       };
     case "medium":
       return {
-        text: "Medium", 
+        text: "Medium",
         icon: "MinusCircle",
         className: "bg-yellow-600 text-white rounded-sm m-0 px-1.5",
       };
     case "low":
       return {
-        text: "Low", 
+        text: "Low",
         icon: "LightBulb",
         className: "bg-green-600 text-white rounded-sm m-0 px-1.5",
       };
     default:
       return {
-        text: priority, 
+        text: priority,
         icon: "BadgeQuestionMarkIcon",
         className: "bg-gray-500 text-white rounded-sm m-0 px-1.5",
       };
   }
-}
+};
 
-export const depVulnCount = (deps: Dependency) : boolean => {
+export const depVulnCount = (deps: Dependency): boolean => {
   return deps.vulnerabilities && deps.vulnerabilities.length ? true : false;
 };
 
@@ -192,4 +194,10 @@ String.prototype.toTitleCase = function (): string {
     /\w\S*/g,
     (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase()
   );
+};
+
+export const downloadFixPlanPDF = async (
+  fixPlanRef: RefObject<HTMLDivElement | null>
+) => {
+  if (!fixPlanRef.current) return;
 };

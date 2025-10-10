@@ -6,8 +6,6 @@ import {
   Check,
   Copy,
   Download,
-  Maximize,
-  Minimize,
   RefreshCcw,
   X,
 } from "lucide-react";
@@ -27,7 +25,6 @@ interface DependencyDetailsProps {
   dependencies: { [technology: string]: Dependency[] };
   isMobile?: boolean;
   isOpen?: boolean;
-  isSidebarExpanded: boolean;
   isDiagramExpanded?: boolean;
   onClose?: () => void;
   setIsMobile?: (isMobile: boolean) => void;
@@ -40,9 +37,6 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     node,
     dependencies,
     onClose,
-    isSidebarExpanded,
-    isDiagramExpanded,
-    setIsSidebarExpanded,
     isMobile,
   } = props;
 
@@ -233,7 +227,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     return (
       <Badge
         className={cn(
-          isSidebarExpanded ? "text-sm" : "text-xs",
+          isMobile ? "text-sm" : "text-xs",
           config.className
         )}
       >
@@ -250,28 +244,30 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     <div
       className={cn(
         "absolute right-0 flex flex-col",
-        isSidebarExpanded
-          ? isMobile
+        // isSidebarExpanded
+          // ? 
+          isMobile
             ? "w-full p-1 h-[calc(100vh-4rem)] pr-1"
-            : "w-[35%] p-1 h-[calc(100vh-4rem)] pr-1"
-          : isMobile
-            ? "w-full p-1 top-1/3 pr-1"
-            : isDiagramExpanded
-              ? "top-1/4"
-              : "top-[260px]",
+            : "w-[35%] p-1 h-[calc(100vh-4rem)] pr-1",
+          // : isMobile
+          //   ? "w-full p-1 top-1/3 pr-1"
+          //   : isDiagramExpanded
+          //     ? "top-1/4"
+          //     : "top-1/3",
         "z-10 p-1 pr-1"
       )}
     >
       <Card
         className={cn(
           "bg-background border-none text-accent p-0 gap-0 relative rounded-lg",
-          isSidebarExpanded
-            ? isMobile
+          // isSidebarExpanded
+          //   ? 
+            isMobile
               ? "h-[92vh]"
               : "h-[100%]"
-            : isMobile
-              ? "h-[66vh]"
-              : "w-[400px] h-[calc(100vh-17rem)]"
+            // : isMobile
+            //   ? "h-[66vh]"
+            //   : "w-[400px] h-[calc(100vh-17rem)]"
         )}
       >
         <CardHeader
@@ -300,7 +296,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                 onClick={downloadDetails}
                 color="white"
               />
-              {isSidebarExpanded ? (
+              {/* {isSidebarExpanded ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Minimize
@@ -326,7 +322,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                   </TooltipTrigger>
                   <TooltipContent>Expand</TooltipContent>
                 </Tooltip>
-              )}
+              )} */}
               <X className="cursor-pointer" onClick={onClose} color="white" />
             </div>
           </div>
@@ -384,13 +380,12 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                   getSeverityBadge={getSeverityBadge}
                   transitiveNodeDetails={transitiveNodeDetails}
                   matchedTransitiveNode={matchedTransitiveNode}
-                  isSidebarExpanded={isSidebarExpanded}
+                  isMobile={isMobile}
                 />
               </TabsContent>
               <TabsContent value="AI_vuln_details" className="mt-0">
                 <DependencyAIDetails
                   dependency={allDetails}
-                  isSidebarExpanded={isSidebarExpanded}
                   error={error}
                   isLoading={isLoading}
                   summary={summary}
@@ -400,6 +395,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                   getSeverityBadge={getSeverityBadge}
                   setError={setError}
                   setIsLoading={setIsLoading}
+                  isMobile={isMobile}
                 />
               </TabsContent>
             </div>
@@ -408,7 +404,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
         <CardFooter className="p-2">
           <p
             className={cn(
-              isSidebarExpanded ? "text-sm" : "text-xs",
+              isMobile ? "text-sm" : "text-xs",
               "italic text-foreground px-2"
             )}
           >

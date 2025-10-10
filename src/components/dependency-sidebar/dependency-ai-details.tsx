@@ -5,7 +5,7 @@ import * as LucideIcons from "lucide-react";
 
 interface DependencyAIDetailsProps {
   dependency: Dependency | undefined;
-  isSidebarExpanded?: boolean;
+  isMobile?: boolean;
   error: string | null;
   isLoading: boolean;
   summary: string | null;
@@ -20,7 +20,7 @@ interface DependencyAIDetailsProps {
 const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
   const {
     dependency,
-    isSidebarExpanded,
+    isMobile,
     error,
     isLoading,
     summary,
@@ -57,7 +57,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
     return (
       <Badge
         className={cn(
-          isSidebarExpanded ? "text-sm" : "text-xs",
+          isMobile ? "text-sm" : "text-xs",
           config.className
         )}
       >
@@ -73,7 +73,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
       return (
         <Badge
           className={cn(
-            isSidebarExpanded ? "text-sm" : "text-xs",
+            isMobile ? "text-sm" : "text-xs",
             "bg-gray-500 text-white rounded-sm m-0"
           )}
         >
@@ -84,7 +84,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
     return (
       <Badge
         className={cn(
-          isSidebarExpanded ? "text-sm" : "text-xs",
+          isMobile ? "text-sm" : "text-xs",
           "bg-blue-600 text-white rounded-sm m-0"
         )}
       >
@@ -155,7 +155,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
       return (
         <Badge
           className={cn(
-            isSidebarExpanded ? "text-sm" : "text-xs",
+            isMobile ? "text-sm" : "text-xs",
             "bg-gray-500 text-white rounded-sm m-0"
           )}
         >
@@ -166,7 +166,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
     return (
       <Badge
         className={cn(
-          isSidebarExpanded ? "text-sm" : "text-xs",
+          isMobile ? "text-sm" : "text-xs",
           "bg-amber-700 text-white rounded-sm m-0"
         )}
       >
@@ -195,39 +195,68 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
               {getExploitVectorBadge(parsedSummary?.exploit_vector || "N/A")}
             </div>
             <div className="mb-4">
-              <p className="text-md font-bold text-input mb-1">
+              <p
+                className={cn(
+                  isMobile ? "text-sm" : "text-md",
+                  "font-bold text-input mb-1"
+                )}
+              >
                 Remediation Actions
               </p>
-              <div className={cn(isSidebarExpanded ? "text-sm" : "text-xs")}>
+              <div className={cn(isMobile ? "text-xs" : "text-sm")}>
                 {parseListItems(parsedSummary?.recommended_actions || [])}
               </div>
             </div>
             <div className="mb-4">
-              <p className="text-md font-bold text-input mb-1">Summary</p>
-              <p className={cn(isSidebarExpanded ? "text-sm" : "text-xs")}>
+              <p
+                className={cn(
+                  isMobile ? "text-sm" : "text-md",
+                  "font-bold text-input mb-1"
+                )}
+              >
+                Summary
+              </p>
+              <p className={cn(isMobile ? "text-xs" : "text-sm")}>
                 {parseText(parsedSummary?.summary)}
               </p>
             </div>
             <div className="mb-4">
-              <p className="text-md font-bold text-inpu mb-1">Impact</p>
-              <p className={cn(isSidebarExpanded ? "text-sm" : "text-xs")}>
+              <p
+                className={cn(
+                  isMobile ? "text-sm" : "text-md",
+                  "font-bold text-input mb-1"
+                )}
+              >
+                Impact
+              </p>
+              <p className={cn(isMobile ? "text-xs" : "text-sm")}>
                 {parseText(parsedSummary?.impact)}
               </p>
             </div>
             <div className="mb-4">
-              <p className="text-md font-bold text-input mb-1">
+              <p
+                className={cn(
+                  isMobile ? "text-sm" : "text-md",
+                  "font-bold text-input mb-1"
+                )}
+              >
                 Affected Components
               </p>
-              <div className={cn(isSidebarExpanded ? "text-sm" : "text-xs")}>
+              <div className={cn(isMobile ? "text-sm" : "text-xs")}>
                 {parseListItems(parsedSummary?.affected_components) || []}
               </div>
             </div>
           </div>
           <div className="mb-4">
-            <p className="text-md font-bold text-inpu mb-1">
+            <p
+              className={cn(
+                isMobile ? "text-sm" : "text-md",
+                "font-bold text-input mb-1"
+              )}
+            >
               Risk Score Justification
             </p>
-            <div className={cn(isSidebarExpanded ? "text-sm" : "text-xs")}>
+            <div className={cn(isMobile ? "text-xs" : "text-sm")}>
               {parseListItems(parsedSummary?.risk_score_justification)}
             </div>
           </div>

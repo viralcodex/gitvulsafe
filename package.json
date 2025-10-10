@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_ENV=development next dev --turbopack",
-    "build": "cross-env NODE_ENV=production next lint --fix && npm run optimize:images && next build",
+    "build": "cross-env NODE_ENV=production next lint --fix && next build",
     "start": "cross-env NODE_ENV=production next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

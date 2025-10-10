@@ -1,4 +1,4 @@
-import React, { useState, Dispatch, SetStateAction } from "react";
+import { useState, Dispatch, SetStateAction, useEffect, RefObject } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 import { Download, Loader, RefreshCcw, X } from "lucide-react";
 import * as LucideIcons from "lucide-react";
@@ -24,10 +24,11 @@ interface FixPlanCardProps {
   ecosystemOptions?: string[];
   content: Record<string, string>;
   manifestData: ManifestFileContentsApiResponse | null;
-  fixPlanError: string;
+  fixPlanError: Record<string, string>;
   fixPlanComplete: boolean;
   isFixPlanLoading: boolean;
-  setFixPlanError: Dispatch<SetStateAction<string>>;
+  fixPlanRef: RefObject<HTMLDivElement | null>;
+  setFixPlanError: Dispatch<SetStateAction<Record<string, string>>>;
   setFixPlanComplete: Dispatch<SetStateAction<boolean>>;
   setManifestData: Dispatch<
     SetStateAction<ManifestFileContentsApiResponse | null>
@@ -45,6 +46,7 @@ const FixPlanCard = (props: FixPlanCardProps) => {
     fixPlanError,
     isFixPlanLoading,
     fixPlanComplete,
+    fixPlanRef
   } = props;
 
   const [showFixPlans, setShowFixPlans] = useState<Record<string, boolean>>({});
@@ -54,6 +56,18 @@ const FixPlanCard = (props: FixPlanCardProps) => {
   // const dependencyCount = manifestData
   //   ? Object.values(manifestData.dependencies).flat().length
   //   : 0;
+
+  useEffect(() => {
+    //if any one of the values in the object is false, then set isExpandedAll to false
+    const isAnyOneSectionClosed = Object.values(showFixPlans).some(
+      (v) => v === false
+    );
+    if (isAnyOneSectionClosed) {
+      setIsExpandedAll(false);
+    } else {
+      setIsExpandedAll(true);
+    }
+  }, [showFixPlans, setIsExpandedAll]);
 
   const toggleShowFixPlan = (key: string) => {
     setShowFixPlans((prev) => ({
@@ -104,15 +118,6 @@ const FixPlanCard = (props: FixPlanCardProps) => {
   };
 
   const generateFixPlan = (key: string, hasVulnerabilities: boolean) => {
-    // Check for global error first
-    if (fixPlanError) {
-      return (
-        <div className="mt-2 p-2 bg-destructive/10 rounded-md">
-          <span className="text-sm text-red-500">{fixPlanError}</span>
-        </div>
-      );
-    }
-
     // No vulnerabilities, so no fix plan
     if (!hasVulnerabilities) {
       return;
@@ -124,6 +129,15 @@ const FixPlanCard = (props: FixPlanCardProps) => {
     // }
 
     key = key.replace("@transitive", "");
+
+    // Check for specific error for this dependency
+    if (fixPlanError && fixPlanError[key]) {
+      return (
+        <div className="p-2 bg-destructive/10 rounded-md">
+          <span className="text-sm text-red-500">{fixPlanError[key]}</span>
+        </div>
+      );
+    }
 
     // If content doesn't exist for this key and loading is not active, show "not processed yet" message
     if (!content[key] && !isFixPlanLoading) {
@@ -149,7 +163,7 @@ const FixPlanCard = (props: FixPlanCardProps) => {
     }
 
     // Check if the content is an error message
-    if (content[key].startsWith("ERROR:")) {
+    if (content[key] && content[key].startsWith("ERROR:")) {
       return (
         <div className="mt-2 p-2 bg-destructive/10 rounded-md overflow-hidden">
           <span className="text-sm text-destructive break-all whitespace-pre-wrap block">
@@ -410,7 +424,7 @@ const FixPlanCard = (props: FixPlanCardProps) => {
           </div>
         </CardHeader>
         <CardContent className="h-full gap-0 overflow-y-scroll scrollbar-background-bg scrollbar-background-thumb py-2">
-          <div className="pl-3 pr-1 py-2">
+          <div className="pl-3 pr-1 py-2" ref={fixPlanRef}>
             <ul className="list-inside ml-0">
               {manifestData?.dependencies ? (
                 Object.entries(manifestData.dependencies).map(
