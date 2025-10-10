@@ -1,7 +1,5 @@
 "use client";
 
-import { AppSidebar } from "@/components/dependency-list";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { useGraph } from "@/hooks/useGraph";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -14,13 +12,19 @@ import {
 } from "@/constants/constants";
 import TopHeaderFile from "@/components/topheaderfile";
 import DependencyDetailsCard from "@/components/dependency-sidebar/dependency-sidebar";
-import { parseFileName, verifyFile, verifyUrl } from "@/lib/utils";
+import {
+  downloadFixPlanPDF,
+  parseFileName,
+  verifyFile,
+  verifyUrl,
+} from "@/lib/utils";
 import { getFixPlanSSE, uploadFile } from "@/lib/api";
 import toast from "react-hot-toast";
 import { useRepoData } from "@/hooks/useRepoData";
 import Image from "next/image";
 import { Dropdown } from "@/components/ui/dropdown";
 import FixPlanCard from "@/components/fix-plan-card";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Page = () => {
   // const branch = useSearchParams().get("branch") || "";
@@ -35,7 +39,7 @@ const Page = () => {
   const [error, setError] = useState<string>("");
   const [isNodeClicked, setIsNodeClicked] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(true);
   const [isDiagramExpanded, setIsDiagramExpanded] = useState<boolean>(false);
   const [fileHeaderOpen, setFileHeaderOpen] = useState<boolean>(!!file);
   const [uploaded, setUploaded] = useState<boolean>(false);
@@ -45,16 +49,16 @@ const Page = () => {
   const [debouncedUrl, setDebouncedUrl] = useState<string>("");
   const [isFixPlanLoading, setIsFixPlanLoading] = useState<boolean>(false);
   const [fixPlan, setFixPlan] = useState<Record<string, string>>({});
-  const [fixPlanError, setFixPlanError] = useState<string>("");
+  const [fixPlanError, setFixPlanError] = useState<Record<string, string>>({});
   const [isFixPlanDialogOpen, setFixPlanDialogOpen] = useState<boolean>(false);
   const [fixPlanComplete, setFixPlanComplete] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
+  const fixPlanRef = useRef<HTMLDivElement>(null);
+
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const [isMobile, setIsMobile] = useState<boolean>(
-    typeof window !== "undefined" && window.innerWidth < 640
-  );
+  const isMobile = useIsMobile();
 
   const repoUrl = useMemo(() => {
     if (!debouncedUrl) return null;
@@ -167,7 +171,7 @@ const Page = () => {
       // setIsNodeClicked(false);
       // setSelectedNode(null);
       // setIsSidebarExpanded(false);
-      setIsMobile(getViewportWidth() < 640);
+      // setIsMobile(getViewportWidth() < 640);
     };
     console.log("Window size changed:");
     window.addEventListener("resize", handleResize);
@@ -180,7 +184,7 @@ const Page = () => {
     const handleNavigation = () => {
       setIsNodeClicked(false);
       setSelectedNode(null);
-      setIsSidebarExpanded(false);
+      // setIsSidebarExpanded(false);
       setIsDiagramExpanded(false);
       setFileHeaderOpen(false);
       setInputFile(null);
@@ -196,7 +200,7 @@ const Page = () => {
   useEffect(() => {
     setIsNodeClicked(false);
     setSelectedNode(null);
-    setIsSidebarExpanded(false);
+    // setIsSidebarExpanded(false);
     setIsDiagramExpanded(false);
   }, [username, repo, branch, file]);
 
@@ -228,31 +232,49 @@ const Page = () => {
   }, []);
 
   const onError = useCallback((error: string) => {
+    toast.dismiss();
     toast.error("Error generating fix plan");
-    setFixPlanError("Error generating fix plan: " + error);
-    setIsFixPlanLoading(false);
-    setFixPlan({});
+
+    const errorParts = error.split(" ");
+    let dependencyKey = "";
+
+    for (const part of errorParts) {
+      if (part.includes("@") && part.length > 3) {
+        dependencyKey = part;
+        break;
+      }
+    }
+
+    if (dependencyKey) {
+      console.log("Error for dependency:", dependencyKey, error);
+      setFixPlanError((prev) => ({
+        ...prev,
+        [dependencyKey]: error,
+      }));
+    } else {
+      console.log("General error (no specific dependency):", error);
+    }
   }, []);
 
   const onComplete = useCallback(() => {
     toast.success("Fix plan generation completed!");
     setFixPlanComplete(true);
     setIsFixPlanLoading(false);
-  }, []);
+    console.log(fixPlan);
+  }, [fixPlan]);
 
   const generateFixPlan = useCallback(
     async (regenerateFixPlan: boolean = false) => {
+      setFixPlanDialogOpen(true);
       if (isFixPlanLoading) return; // Prevent multiple simultaneous calls
-      setFixPlanError("");
+      setFixPlanError({});
       if (Object.keys(fixPlan).length > 0 && !regenerateFixPlan) {
         setFixPlanDialogOpen(true);
         return;
       }
-      setFixPlanDialogOpen(true);
       setIsFixPlanLoading(true);
-      setError(""); // Clear any previous errors
-      setFixPlan({}); // Reset fix plan state
-
+      setError("");
+      setFixPlan({});
       try {
         await getFixPlanSSE(
           username,
@@ -296,7 +318,7 @@ const Page = () => {
       }
       setIsNodeClicked(false);
       setSelectedNode(null);
-      setIsSidebarExpanded(false);
+      // setIsSidebarExpanded(false);
     },
     [selectedNode]
   );
@@ -304,7 +326,7 @@ const Page = () => {
   const handleDetailsCardClose = () => {
     setIsNodeClicked(false);
     setSelectedNode(null);
-    setIsSidebarExpanded(false);
+    // setIsSidebarExpanded(false);
   };
 
   const handleSetDependencies = (deps: GroupedDependencies) => {
@@ -313,6 +335,11 @@ const Page = () => {
     setLoading(true);
     if (deps) setDependencies(deps);
   };
+
+  useEffect(() => {
+    toast.dismiss();
+    if (error) toast.error(error);
+  }, [error]);
 
   //handle github url
   useEffect(() => {
@@ -392,7 +419,10 @@ const Page = () => {
       {isFixPlanDialogOpen ? (
         <FixPlanCard
           onClose={() => setFixPlanDialogOpen(false)}
-          onDownload={() => {}}
+          onDownload={async () => {
+            await downloadFixPlanPDF(fixPlanRef);
+          }}
+          fixPlanRef={fixPlanRef}
           content={fixPlan}
           manifestData={manifestData}
           setManifestData={setManifestData}
@@ -409,19 +439,20 @@ const Page = () => {
       )}
       <div
         className={
-          isSidebarExpanded && !isMobile
+          selectedNode && !isMobile
             ? "w-[65%] flex flex-col items-center justify-center"
             : "flex-1"
         }
       >
-        <SidebarProvider className="rounded-lg">
+        {/* <SidebarProvider>
           <AppSidebar
             dependencies={dependencies}
             isLoading={loading}
             error={error}
             className="rounded-lg border-none h-[calc(100vh-13rem)]"
-          />
+          /> 
         </SidebarProvider>
+        */}
         {fileHeaderOpen ? (
           <TopHeaderFile
             file={parseFileName(newFileName)}
@@ -504,7 +535,6 @@ const Page = () => {
             <p className="sm:text-md text-sm">Generate Fix Plan</p>
           </div>
         </div>
-        {error && <div className="text-red-500 text-center py-2">{error}</div>}
         <DepDiagram
           svgRef={svgRef}
           graphData={graphData}
@@ -518,7 +548,6 @@ const Page = () => {
           isFixPlanLoading={isFixPlanLoading}
           onNodeClick={handleNodeClick}
           setIsLoading={setLoading}
-          setIsMobile={setIsMobile}
           setWindowSize={setWindowSize}
           setIsDiagramExpanded={setIsDiagramExpanded}
           setIsFixPlanLoading={setIsFixPlanLoading}
@@ -532,9 +561,7 @@ const Page = () => {
           dependencies={dependencies}
           isOpen={isNodeClicked}
           isMobile={isMobile}
-          isSidebarExpanded={isSidebarExpanded}
           onClose={handleDetailsCardClose}
-          setIsMobile={setIsMobile}
           setIsSidebarExpanded={setIsSidebarExpanded}
         />
       )}

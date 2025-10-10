@@ -52,7 +52,7 @@ export function AppSidebar({ dependencies, isLoading, ...props }: AppSidebarProp
   const isSearching = !!search;
 
   return (
-    <Sidebar {...props}>
+    <Sidebar {...props} className="">
       <SidebarHeader>
         <div className="flex flex-row items-center justify-items-start gap-x-3 text-foreground p-2">
           <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">

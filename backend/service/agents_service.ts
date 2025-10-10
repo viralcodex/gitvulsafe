@@ -248,7 +248,7 @@ class AgentsService {
         );
         this.progressCallback(
           'vulnerability_analysis_error',
-          `Error: Can't generate fix plan for ${dependencyData.name}@${dependencyData.version}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Can't generate fix plan for ${dependencyData.name}@${dependencyData.version}`,
           {
             dependencyName: dependencyData.name,
             dependencyVersion: dependencyData.version,
@@ -260,7 +260,7 @@ class AgentsService {
           ...state,
           errors: [
             ...(state.errors ?? []),
-            `Error: Couldn't generate fix plan for ${dependencyData.name}: ${error}`,
+            `Couldn't generate fix plan for ${dependencyData.name}`,
           ],
         };
       }
