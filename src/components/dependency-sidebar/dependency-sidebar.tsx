@@ -6,8 +6,6 @@ import {
   Check,
   Copy,
   Download,
-  Maximize,
-  Minimize,
   RefreshCcw,
   X,
 } from "lucide-react";
@@ -39,8 +37,6 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     node,
     dependencies,
     onClose,
-    isDiagramExpanded,
-    setIsSidebarExpanded,
     isMobile,
   } = props;
 

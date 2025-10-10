@@ -8,20 +8,11 @@ import {
   GraphNode,
   Relation,
 } from "@/constants/constants";
-import {
-  LucideLoader2,
-  Maximize,
-  Minimize,
-  MinusIcon,
-  PlusIcon,
-  RefreshCw,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Badge } from "./ui/badge";
 import EmptyCard from "./empty-card";
 import DiagramControls from "./diagram-controls";
+import { LucideLoader2 } from "lucide-react";
 
 interface DepDiagramProps {
   svgRef: React.RefObject<SVGSVGElement | null>;

@@ -3,7 +3,6 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { AiDialog } from "./ai-dialog";
 import { GithubDialog } from "./github-dialog";
-import Image from "next/image";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { KeyRound, Menu, Sparkle, X } from "lucide-react";
 import { FaGithub } from "react-icons/fa";

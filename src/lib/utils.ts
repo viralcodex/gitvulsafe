@@ -199,4 +199,5 @@ String.prototype.toTitleCase = function (): string {
 export const downloadFixPlanPDF = async (
   fixPlanRef: RefObject<HTMLDivElement | null>
 ) => {
+  if (!fixPlanRef.current) return;
 };
