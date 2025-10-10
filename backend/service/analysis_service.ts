@@ -550,7 +550,8 @@ class AnalysisService {
           // Keep only nodes with vulnerabilities OR nodes of type SELF
           const vulnerableNodes = dep.transitiveDependencies.nodes.filter(
             (node) =>
-              (node.vulnerabilities && node.vulnerabilities.length > 0) ??
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              (node.vulnerabilities && node.vulnerabilities.length > 0) ||
               node.dependencyType === 'SELF',
           );
           // Build mapping from old index to new index
@@ -610,7 +611,8 @@ class AnalysisService {
         const transitiveHasVulns = dep.transitiveDependencies?.nodes?.some(
           (node) => node.vulnerabilities && node.vulnerabilities.length > 0,
         );
-        return hasVulns ?? transitiveHasVulns;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        return hasVulns || transitiveHasVulns;
       });
       if (relevantDeps.length > 0) {
         filtered[group] = relevantDeps;
