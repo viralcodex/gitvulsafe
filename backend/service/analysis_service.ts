@@ -4,31 +4,58 @@ import yaml from 'js-yaml';
 import { parseStringPromise } from 'xml2js';
 
 import {
-  Ecosystem,
+  GITHUB_API_BASE_URL,
+  DEPS_DEV_BASE_URL,
+  OSV_DEV_VULN_BATCH_URL,
+  OSV_DEV_VULN_DET_URL,
+  DEFAULT_BATCH_SIZE,
+  DEFAULT_CONCURRENCY,
+  DEFAULT_TRANSITIVE_BATCH_SIZE,
+  DEFAULT_TRANSITIVE_CONCURRENCY,
+  DEFAULT_VULN_BATCH_SIZE,
+  DEFAULT_VULN_CONCURRENCY,
+  PROGRESS_STEPS,
+} from '../constants/constants';
+import {
   Dependency,
-  DependencyGroups,
-  DependencyApiResponse,
-  ManifestFile,
   ManifestFileContents,
+  ManifestFile,
+  manifestFiles,
   ManifestFiles,
+  DependencyGroups,
+  Ecosystem,
+  GithubFileContent,
+  MavenDependency,
   OSVBatchResponse,
-  OSVQuery,
-  TransitiveDependency,
   Vulnerability,
+  TransitiveDependencyResult,
   DepsDevDependency,
+  TransitiveDependency,
+  DependencyApiResponse,
   FileDetails,
   Branch,
-  manifestFiles,
-  MavenDependency,
-} from '../constants/constants';
+  OSVQuery,
+} from '../constants/model';
 
-const GITHUB_API_BASE_URL = 'https://api.github.com';
+import ProgressService from './progress_service';
 
 class AnalysisService {
-  private client: AxiosInstance;
+  private githubClient: AxiosInstance;
+  private globalDependencyMap;
+  private dependencyFileMapping;
+  private stepErrors;
+  private progressService: ProgressService;
+  private performanceConfig = {
+    concurrency: DEFAULT_CONCURRENCY,
+    batchSize: DEFAULT_BATCH_SIZE,
+    vulnConcurrency: DEFAULT_VULN_CONCURRENCY,
+    vulnBatchSize: DEFAULT_VULN_BATCH_SIZE,
+    transitiveConcurrency: DEFAULT_TRANSITIVE_CONCURRENCY,
+    transitiveBatchSize: DEFAULT_TRANSITIVE_BATCH_SIZE,
+  };
 
-  constructor(githubPAT?: string) {
-    this.client = axios.create({
+  constructor(githubPAT?: string, progressService?: ProgressService) {
+    this.githubClient = axios.create({
       baseURL: GITHUB_API_BASE_URL,
       headers: githubPAT
         ? {
@@ -39,6 +66,90 @@ class AnalysisService {
             Accept: 'application/vnd.github.v3+json',
           },
     });
+    this.stepErrors = new Map<string, string[]>();
+    this.globalDependencyMap = new Map<string, Dependency>();
+    this.dependencyFileMapping = new Map<string, string[]>();
+    this.configurePerformance({
+      concurrency: 10,
+      batchSize: 100,
+      vulnConcurrency: 50,
+      vulnBatchSize: 50,
+      transitiveConcurrency: 8,
+      transitiveBatchSize: 15,
+    });
+    this.progressService = progressService ?? new ProgressService();
+  }
+
+  /**
+   * Configure performance settings for API calls
+   * @param config - Performance configuration options
+   */
+  configurePerformance(config: {
+    concurrency?: number;
+    batchSize?: number;
+    vulnConcurrency?: number;
+    vulnBatchSize?: number;
+    transitiveConcurrency?: number;
+    transitiveBatchSize?: number;
+  }) {
+    this.performanceConfig = {
+      ...this.performanceConfig,
+      ...config,
+    };
+  }
+
+  /**
+   * Process items in parallel batches with concurrency control
+   * @param items - Array of items to process
+   * @param batchSize - Size of each batch
+   * @param concurrency - Number of concurrent batches
+   * @param processor - Function to process each item
+   * @param description - Description for logging
+   * @returns Promise resolving to array of results
+   */
+  private async processBatchesInParallel<T, R>(
+    items: T[],
+    batchSize: number,
+    concurrency: number,
+    processor: (item: T) => Promise<R>,
+    description: string,
+  ): Promise<R[]> {
+    const results: R[] = [];
+
+    // Create batches
+    const batches: T[][] = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize));
+    }
+
+    console.log(
+      `${description}: Processing ${items.length} items in ${batches.length} batches with concurrency ${concurrency}`,
+    );
+
+    // Process batches with controlled concurrency
+    for (let i = 0; i < batches.length; i += concurrency) {
+      const concurrentBatches = batches.slice(i, i + concurrency);
+
+      const batchPromises = concurrentBatches.map(async (batch) => {
+        const batchResults = await Promise.all(
+          batch.map((item) => processor(item)),
+        );
+        return batchResults;
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults.flat());
+
+      // Progress logging
+      const processed = Math.min(i + concurrency, batches.length);
+      const processedPercentage = (processed / batches.length) * 100;
+      console.log(
+        `${description}: Processed ${processed}/${batches.length} batches`,
+      );
+      this.progressService.progressUpdater(description, processedPercentage);
+    }
+
+    return results;
   }
 
   /**
@@ -49,7 +160,9 @@ class AnalysisService {
    */
   async getDefaultBranch(username: string, repo: string): Promise<string> {
     try {
-      const response = await this.client.get(`/repos/${username}/${repo}`);
+      const response = await this.githubClient.get(
+        `/repos/${username}/${repo}`,
+      );
       return response.data.default_branch;
     } catch (error) {
       console.error('Error fetching default branch:', error);
@@ -78,36 +191,31 @@ class AnalysisService {
   }> {
     try {
       // Fetch only the requested page from GitHub API
-      const response = await this.client.get(
+      const response = await this.githubClient.get(
         `/repos/${username}/${repo}/branches`,
         { params: { per_page: perPage, page } },
       );
 
       const branches = response.data.map((branch: Branch) => branch.name);
 
-      // Get default branch separately
       const defaultBranch = await this.getDefaultBranch(username, repo);
 
       // Determine if there are more pages by checking Link header
       let hasMore = false;
-      let totalPages = page; // At least current page exists
+      let totalPages = page;
 
       const linkHeader = response.headers['link'];
       if (linkHeader) {
-        // Check if there's a "next" link
         hasMore = linkHeader.includes('rel="next"');
-
-        // Try to parse total pages from "last" link
         const lastMatch = linkHeader.match(/&page=(\d+)>; rel="last"/);
         if (lastMatch) {
           totalPages = parseInt(lastMatch[1], 10);
         }
       } else if (response.data.length === perPage) {
-        // If we got a full page and no Link header, there might be more
         hasMore = true;
       }
 
-      // Estimate total branches count (this is approximate)
+      // Approximate total count
       const estimatedTotal = hasMore
         ? totalPages * perPage
         : (page - 1) * perPage + branches.length;
@@ -139,7 +247,7 @@ class AnalysisService {
   ): Promise<ManifestFileContents> {
     try {
       //get file tree for the specified branch
-      const response = await this.client.get(
+      const response = await this.githubClient.get(
         `/repos/${username}/${repo}/git/trees/${branch}?recursive=1`,
       );
 
@@ -215,7 +323,7 @@ class AnalysisService {
         const contents = await Promise.all(
           files.map(async (file) => {
             try {
-              const response = await this.client.get(
+              const response = await this.githubClient.get(
                 `/repos/${username}/${repo}/contents/${file.path}?ref=${branch}`,
               );
               const content = response.data.content;
@@ -229,91 +337,291 @@ class AnalysisService {
               }
             } catch (error) {
               console.error(`Error fetching file ${file.path}:`, error);
+              this.addStepError('File Content Retrieval', error);
               return null;
             }
           }),
         );
-        manifestFilesContent[ecosystem] = contents.filter(
-          (c): c is { path: string; content: string } => c !== null,
-        );
+        manifestFilesContent[ecosystem] = contents.filter((c) => c !== null);
       }),
     );
 
     return manifestFilesContent;
   }
 
+  /**
+   * Helper method to collect errors by step for consolidated reporting
+   * @param step - The analysis step (e.g., 'File Parsing', 'Vulnerability Scanning')
+   * @param error - The error object or message
+   */
+  private addStepError(step: string, error: any): void {
+    if (!this.stepErrors.has(step)) {
+      this.stepErrors.set(step, []);
+    }
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    this.stepErrors.get(step)?.push(errorMessage);
+  }
+
+  /**
+   * Consolidates step errors into summary messages
+   */
+  private consolidateStepErrors(): string[] {
+    const consolidatedErrors: string[] = [];
+
+    this.stepErrors.forEach((errors, step) => {
+      if (errors.length > 0) {
+        if (errors.length === 1) {
+          consolidatedErrors.push(`${step}: ${errors[0]}`);
+        } else {
+          consolidatedErrors.push(
+            `${step}: ${errors.length} issues encountered (${errors[0]})`,
+          );
+        }
+      }
+    });
+
+    return consolidatedErrors;
+  }
+
+  /**
+   * Adds a dependency to the global deduplication system
+   * @param dependency - The dependency to add
+   * @param filePath - The file path where this dependency was found
+   */
+  private addDependencyToGlobalMap(
+    dependency: Dependency,
+    filePath: string,
+  ): void {
+    const depKey = `${dependency.name}@${dependency.version}@${dependency.ecosystem}`;
+
+    // Add to global dependency map if not already present
+    if (!this.globalDependencyMap.has(depKey)) {
+      this.globalDependencyMap.set(depKey, dependency);
+    }
+
+    // Track which files need this dependency
+    if (!this.dependencyFileMapping.has(depKey)) {
+      this.dependencyFileMapping.set(depKey, []);
+    }
+    const files = this.dependencyFileMapping.get(depKey);
+    if (files && !files.includes(filePath)) {
+      files.push(filePath);
+    }
+  }
+
+  /**
+   * Maps processed dependencies back to their respective files
+   * @param processedDependencies - Dependencies with their analysis results
+   * @returns DependencyGroups organized by file path
+   */
+  private mapDependenciesToFiles(
+    processedDependencies: Map<string, Dependency>,
+  ): DependencyGroups {
+    const result: DependencyGroups = {};
+
+    processedDependencies.forEach((dependency, depKey) => {
+      const files = this.dependencyFileMapping.get(depKey) ?? [];
+      files.forEach((filePath) => {
+        if (!result[filePath]) {
+          result[filePath] = [];
+        }
+        // Create a copy of the dependency for each file to avoid reference issues
+        result[filePath].push({ ...dependency });
+      });
+    });
+
+    return result;
+  }
+
+  /**
+   * Resets the global deduplication state (useful for new analysis runs)
+   */
+  private resetGlobalState(): void {
+    this.globalDependencyMap.clear();
+    this.dependencyFileMapping.clear();
+    this.stepErrors.clear(); // Reset step errors for new analysis
+  }
+
+  /**
+   * Retry API calls with exponential backoff, skipping non-retryable errors
+   * @param apiCall - Function that returns a Promise to retry
+   * @param maxRetries - Maximum number of retry attempts
+   * @param baseDelay - Base delay in milliseconds
+   * @param operation - Description of the operation for logging
+   * @returns Promise with the result of the API call
+   */
+  private async retryApiCall<T>(
+    apiCall: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 500,
+    operation: string = 'API call',
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await apiCall();
+      } catch (error) {
+        const isNonRetryable = this.isNonRetryableError(error);
+
+        if (isNonRetryable || attempt === maxRetries) {
+          if (isNonRetryable) {
+            console.warn(
+              `${operation} failed with non-retryable error:`,
+              error instanceof Error ? error.message : error,
+            );
+          } else {
+            console.error(
+              `${operation} failed after ${maxRetries} attempts:`,
+              error instanceof Error ? error.message : error,
+            );
+          }
+          throw error;
+        }
+
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * 200;
+        const totalDelay = delay + jitter;
+
+        console.warn(
+          `${operation} failed (attempt ${attempt}/${maxRetries}), retrying in ${Math.round(totalDelay)}ms...`,
+          error instanceof Error ? error.message : error,
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, totalDelay));
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
+  /**
+   * Determines if an error is non-retryable (e.g., 404, 401, 403, 400)
+   * @param error - The error to check
+   * @returns true if the error should not be retried
+   */
+  private isNonRetryableError(error: any): boolean {
+    // Handle axios errors
+    if (error?.response?.status) {
+      const status = error.response.status;
+      // Don't retry client errors (4xx) except for rate limiting (429)
+      return status >= 400 && status < 500 && status !== 429;
+    }
+
+    // Handle specific error messages that indicate non-retryable conditions
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return (
+        message.includes('not found') ||
+        message.includes('unauthorized') ||
+        message.includes('forbidden') ||
+        message.includes('bad request') ||
+        message.includes('invalid') ||
+        message.includes('malformed')
+      );
+    }
+
+    return false;
+  }
+
+  /**
+   *
+   * @param username username of the github repo owner
+   * @param repo repository name
+   * @param branch branch of that repository
+   * @param fileContents file contents to parse from that repository
+   * @returns Grouped dependencies by file paths
+   */
   async getParsedManifestFileContents(
     username: string,
     repo: string,
     branch: string,
     fileContents?: ManifestFileContents,
   ): Promise<{ dependencies: DependencyGroups }> {
-    const parsedDependencies: DependencyGroups = {};
-    const seenDeps = new Set<string>();
+    this.resetGlobalState();
 
+    this.progressService.progressUpdater(PROGRESS_STEPS[0], 0);
     const manifestFiles =
       fileContents ?? (await this.getAllManifestData(username, repo, branch));
+    this.progressService.progressUpdater(PROGRESS_STEPS[0], 100);
 
-    // console.log("Manifest files:", manifestFiles);
+    this.progressService.progressUpdater(PROGRESS_STEPS[1], 0);
+    // Process all manifest files to collect unique dependencies
+    await Promise.all([
+      this.processNpmFiles(manifestFiles['npm'] ?? []),
+      Promise.resolve(this.processPhpFiles(manifestFiles['php'] ?? [])),
+      this.processPythonFiles(manifestFiles['PiPY'] ?? []),
+      Promise.resolve(this.processDartFiles(manifestFiles['Pub'] ?? [])),
+      this.processMavenFiles(manifestFiles['Maven'] ?? []),
+      Promise.resolve(this.processRubyFiles(manifestFiles['RubyGems'] ?? [])),
+    ]);
 
-    // NPM package.json
-    manifestFiles['npm']?.forEach(async (fileContent) => {
-      try {
-        const packageJson = JSON.parse(fileContent.content);
+    // Convert global dependency map to processed dependencies
+    const processedDependencies = new Map(this.globalDependencyMap);
 
-        const processDeps = async (deps: Record<string, string>) => {
-          for (const [name, version] of Object.entries(deps)) {
-            let finalVersion = version;
-            if (version === '*' || version === 'latest' || !version) {
-              finalVersion = await this.fetchLatestVersionFromNpm(name);
-            }
-            // console.log("Processing NPM Dep:", name, finalVersion);
-            const ver = this.cleanVersion(finalVersion);
-            const depKey = `${name}@${ver}@npm`;
-            if (!seenDeps.has(depKey)) {
-              seenDeps.add(depKey);
-              if (!parsedDependencies[fileContent.path]) {
-                parsedDependencies[fileContent.path] = [];
+    // Map dependencies back to their respective files
+    const result = this.mapDependenciesToFiles(processedDependencies);
+    this.progressService.progressUpdater(PROGRESS_STEPS[1], 100);
+
+    // console.log('Parsed dependencies:', result);
+    return { dependencies: result };
+  }
+
+  /**
+   * Process NPM package.json files
+   */
+  private async processNpmFiles(
+    files: Array<{ path: string; content: string }>,
+  ): Promise<void> {
+    await Promise.all(
+      files.map(async (fileContent) => {
+        try {
+          const packageJson = JSON.parse(fileContent.content);
+
+          const processDeps = async (deps: Record<string, string>) => {
+            for (const [name, version] of Object.entries(deps)) {
+              let finalVersion = version;
+              if (version === '*' || version === 'latest' || !version) {
+                finalVersion = await this.fetchLatestVersionFromNpm(name);
               }
-              parsedDependencies[fileContent.path].push({
+              const dependency: Dependency = {
                 name,
-                version: this.formattedVersion(ver),
+                version: this.normalizeVersion(finalVersion),
                 ecosystem: Ecosystem.NPM,
-              });
+              };
+              this.addDependencyToGlobalMap(dependency, fileContent.path);
             }
-          }
-        };
+          };
 
-        if (packageJson.dependencies)
-          await processDeps(packageJson.dependencies);
-        if (packageJson.devDependencies)
-          await processDeps(packageJson.devDependencies);
-      } catch (error) {
-        console.error('Error parsing package.json:', error);
-        throw new Error('Failed to parse package.json file');
-      }
-    });
+          if (packageJson.dependencies)
+            await processDeps(packageJson.dependencies);
+          if (packageJson.devDependencies)
+            await processDeps(packageJson.devDependencies);
+        } catch (error) {
+          console.error('Error parsing package.json:', error);
+          this.addStepError('File Parsing', error);
+          throw new Error('Failed to parse package.json file');
+        }
+      }),
+    );
+  }
 
-    // Composer PHP
-    manifestFiles['php']?.forEach((fileContent) => {
+  /**
+   * Process PHP composer.json files
+   */
+  private processPhpFiles(
+    files: Array<{ path: string; content: string }>,
+  ): void {
+    files.forEach((fileContent) => {
       try {
         const composerJson = JSON.parse(fileContent.content);
 
         const processDeps = (deps: Record<string, string>) => {
           for (const [name, version] of Object.entries(deps)) {
-            const ver = this.cleanVersion(version);
-            const depKey = `${name}@${ver}@composer`;
-            if (!seenDeps.has(depKey)) {
-              seenDeps.add(depKey);
-              if (!parsedDependencies[fileContent.path]) {
-                parsedDependencies[fileContent.path] = [];
-              }
-              parsedDependencies[fileContent.path].push({
-                name,
-                version: this.formattedVersion(ver),
-                ecosystem: Ecosystem.COMPOSER,
-              });
-            }
+            const dependency: Dependency = {
+              name,
+              version: this.normalizeVersion(version),
+              ecosystem: Ecosystem.COMPOSER,
+            };
+            this.addDependencyToGlobalMap(dependency, fileContent.path);
           }
         };
 
@@ -322,217 +630,161 @@ class AnalysisService {
           processDeps(composerJson['require-dev']);
       } catch (error) {
         console.error('Error parsing composer.json:', error);
+        this.addStepError('File Parsing', error);
         throw new Error('Failed to parse composer.json file');
       }
     });
-
-    // Python requirements.txt
-    if (manifestFiles['PiPY']) {
-      for (const fileContent of manifestFiles['PiPY']) {
-        const lines = fileContent.content
-          .split('\n')
-          .filter((line) => line.trim() && !line.trim().startsWith('#'));
-
-        for (const line of lines) {
-          const [name, version] = line.split('==');
-          let ver = 'unknown';
-
-          if (name && !version) {
-            try {
-              const response = await axios.get(
-                `https://pypi.org/pypi/${name.trim()}/json`,
-              );
-              ver = response.data.info.version;
-            } catch (error) {
-              console.error(
-                `Error fetching latest version for ${name.trim()}:`,
-                error,
-              );
-            }
-          } else if (name && version) {
-            ver = this.cleanVersion(version);
-          }
-
-          const depKey = `${name.trim()}@${ver}@PyPI`;
-          if (!seenDeps.has(depKey)) {
-            seenDeps.add(depKey);
-            if (!parsedDependencies[fileContent.path]) {
-              parsedDependencies[fileContent.path] = [];
-            }
-            parsedDependencies[fileContent.path].push({
-              name,
-              version: ver,
-              ecosystem: Ecosystem.PYPI,
-            });
-          }
-        }
-      }
-    }
-
-    // Dart pubspec.yaml
-    if (manifestFiles['Pub']) {
-      for (const fileContent of manifestFiles['Pub']) {
-        try {
-          const pubspecYaml = yaml.load(fileContent.content) as {
-            dependencies?: Record<string, string>;
-            dev_dependencies?: Record<string, string>;
-          };
-
-          const processDeps = (deps: Record<string, string>) => {
-            for (const [name, version] of Object.entries(deps)) {
-              const ver = this.cleanVersion(version);
-              const depKey = `${name}@${ver}@Pub`;
-              if (!seenDeps.has(depKey)) {
-                seenDeps.add(depKey);
-                if (!parsedDependencies[fileContent.path]) {
-                  parsedDependencies[fileContent.path] = [];
-                }
-                parsedDependencies[fileContent.path].push({
-                  name,
-                  version: ver,
-                  ecosystem: Ecosystem.PUB,
-                });
-              }
-            }
-          };
-
-          if (pubspecYaml.dependencies) processDeps(pubspecYaml.dependencies);
-          if (pubspecYaml.dev_dependencies)
-            processDeps(pubspecYaml.dev_dependencies);
-        } catch (error) {
-          console.error('Error parsing pubspec.yaml:', error);
-          throw new Error('Failed to parse pubspec.yaml file');
-        }
-      }
-    }
-
-    // Java Maven pom.xml
-    if (manifestFiles['Maven']) {
-      for (const fileContent of manifestFiles['Maven']) {
-        try {
-          const result = await parseStringPromise(fileContent);
-          const propertiesArray = result?.project?.properties?.[0];
-          const propertiesMap: Record<string, string> = {};
-
-          if (propertiesArray) {
-            for (const key in propertiesArray) {
-              if (Object.prototype.hasOwnProperty.call(propertiesArray, key)) {
-                propertiesMap[key] = propertiesArray[key]?.[0] ?? '';
-              }
-            }
-          }
-
-          const dependencies =
-            result?.project?.dependencies?.[0]?.dependency ?? [];
-
-          dependencies.forEach((dep: MavenDependency) => {
-            let version = dep.version?.[0] ?? 'unknown';
-            if (version.startsWith('${') && version.endsWith('}')) {
-              const propName = version.slice(2, -1);
-              version = propertiesMap[propName] ?? 'unknown';
-            }
-            const ver = this.cleanVersion(version);
-            const depKey = `${dep.artifactId?.[0] ?? ''}@${ver}@Maven`;
-            if (!seenDeps.has(depKey)) {
-              seenDeps.add(depKey);
-              if (!parsedDependencies[fileContent.path]) {
-                parsedDependencies[fileContent.path] = [];
-              }
-              parsedDependencies[fileContent.path].push({
-                name: dep.artifactId?.[0] ?? '',
-                version: this.formattedVersion(ver),
-                ecosystem: Ecosystem.MAVEN,
-              });
-            }
-          });
-        } catch (error) {
-          console.error('Error parsing pom.xml:', error);
-          throw new Error('Failed to parse pom.xml file');
-        }
-      }
-    }
-
-    // RubyGems Gemfile
-    if (manifestFiles['RubyGems']) {
-      for (const fileContent of manifestFiles['RubyGems']) {
-        // Only parse lines starting with gem
-        const lines = fileContent.content
-          .split('\n')
-          .filter((line) => line.trim().startsWith('gem '));
-        for (const line of lines) {
-          // Match: gem "name", "version" or gem 'name', '~> 1.0.0'
-          const match = line.match(
-            /gem ['"]([^'"]+)['"](, *['"]([^'"]+)['"])?/,
-          );
-          if (match) {
-            const name = match[1];
-            const version = match[3] ?? 'unknown';
-            const depKey = `${name}@${version}@rubygems`;
-            if (!seenDeps.has(depKey)) {
-              seenDeps.add(depKey);
-              if (!parsedDependencies[fileContent.path]) {
-                parsedDependencies[fileContent.path] = [];
-              }
-              parsedDependencies[fileContent.path].push({
-                name,
-                version: this.formattedVersion(this.cleanVersion(version)),
-                ecosystem: Ecosystem.RUBYGEMS,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    console.log('Parsed dependencies:', parsedDependencies);
-
-    return { dependencies: parsedDependencies };
   }
 
   /**
-   * Analyzes dependencies in a repository and returns vulnerabilities
-   * @param username - GitHub username/organization
-   * @param repo - Repository name
-   * @param branch - branch name (default: 'main')
-   * @returns Promise<DependencyApiResponse> - object containing parsed dependencies and vulnerabilities
+   * Process Python requirements.txt files
    */
-  async analyseDependencies(
-    username: string,
-    repo: string,
-    branch: string,
-    fileContents?: ManifestFileContents,
-  ): Promise<DependencyApiResponse> {
-    const dependenciesResponse = await this.getParsedManifestFileContents(
-      username,
-      repo,
-      branch,
-      fileContents,
-    );
-    const dependencies = dependenciesResponse.dependencies;
+  private async processPythonFiles(
+    files: Array<GithubFileContent>,
+  ): Promise<void> {
+    for (const fileContent of files) {
+      const lines = fileContent.content
+        .split('\n')
+        .filter((line) => line.trim() && !line.trim().startsWith('#'));
 
-    // console.log("Dependencies found:", dependencies);
+      for (const line of lines) {
+        const [name, version] = line.split('==');
+        let ver = 'unknown';
 
-    if (!dependencies || Object.keys(dependencies).length === 0) {
-      return {
-        dependencies: {},
-        error: 'No dependencies found in the repository',
-      };
+        if (name && !version) {
+          try {
+            const response = await this.retryApiCall(
+              () => axios.get(`https://pypi.org/pypi/${name.trim()}/json`),
+              2,
+              1000,
+              `PyPI version lookup for ${name.trim()}`,
+            );
+            ver = response.data.info.version;
+          } catch (error) {
+            console.error(
+              `Error fetching latest version for ${name.trim()}:`,
+              error,
+            );
+            this.addStepError('Version Lookup', error);
+          }
+        } else if (name && version) {
+          ver = this.normalizeVersion(version);
+        }
+
+        const dependency: Dependency = {
+          name: name.trim(),
+          version: ver,
+          ecosystem: Ecosystem.PYPI,
+        };
+        this.addDependencyToGlobalMap(dependency, fileContent.path);
+      }
     }
+  }
 
-    const dependenciesWithChildren =
-      await this.getTransitiveDependencies(dependencies);
-    console.log(
-      'Dependencies with transitive dependencies:',
-      dependenciesWithChildren,
-    );
+  /**
+   * Process Dart pubspec.yaml files
+   */
+  private processDartFiles(
+    files: Array<{ path: string; content: string }>,
+  ): void {
+    files.forEach((fileContent) => {
+      try {
+        const pubspecYaml = yaml.load(fileContent.content) as {
+          dependencies?: Record<string, string>;
+          dev_dependencies?: Record<string, string>;
+        };
 
-    const analysedDependencies: DependencyGroups =
-      await this.getAnalyzedDependencies(dependenciesWithChildren);
+        const processDeps = (deps: Record<string, string>) => {
+          for (const [name, version] of Object.entries(deps)) {
+            const dependency: Dependency = {
+              name,
+              version: this.normalizeVersion(version),
+              ecosystem: Ecosystem.PUB,
+            };
+            this.addDependencyToGlobalMap(dependency, fileContent.path);
+          }
+        };
 
-    return {
-      dependencies: analysedDependencies,
-      error: '',
-    };
+        if (pubspecYaml.dependencies) processDeps(pubspecYaml.dependencies);
+        if (pubspecYaml.dev_dependencies)
+          processDeps(pubspecYaml.dev_dependencies);
+      } catch (error) {
+        console.error('Error parsing pubspec.yaml:', error);
+        this.addStepError('File Parsing', error);
+        throw new Error('Failed to parse pubspec.yaml file');
+      }
+    });
+  }
+
+  /**
+   * Process Java Maven pom.xml files
+   */
+  private async processMavenFiles(
+    files: Array<{ path: string; content: string }>,
+  ): Promise<void> {
+    for (const fileContent of files) {
+      try {
+        const result = await parseStringPromise(fileContent.content);
+        const propertiesArray = result?.project?.properties?.[0];
+        const propertiesMap: Record<string, string> = {};
+
+        if (propertiesArray) {
+          for (const key in propertiesArray) {
+            if (Object.prototype.hasOwnProperty.call(propertiesArray, key)) {
+              propertiesMap[key] = propertiesArray[key]?.[0] ?? '';
+            }
+          }
+        }
+
+        const dependencies =
+          result?.project?.dependencies?.[0]?.dependency ?? [];
+
+        dependencies.forEach((dep: MavenDependency) => {
+          let version = dep.version?.[0] ?? 'unknown';
+          if (version.startsWith('${') && version.endsWith('}')) {
+            const propName = version.slice(2, -1);
+            version = propertiesMap[propName] ?? 'unknown';
+          }
+          const dependency: Dependency = {
+            name: dep.artifactId?.[0] ?? '',
+            version: this.normalizeVersion(version),
+            ecosystem: Ecosystem.MAVEN,
+          };
+          this.addDependencyToGlobalMap(dependency, fileContent.path);
+        });
+      } catch (error) {
+        console.error('Error parsing pom.xml:', error);
+        this.addStepError('File Parsing', error);
+        throw new Error('Failed to parse pom.xml file');
+      }
+    }
+  }
+
+  /**
+   * Process Ruby Gemfiles
+   */
+  private processRubyFiles(
+    files: Array<{ path: string; content: string }>,
+  ): void {
+    files.forEach((fileContent) => {
+      const lines = fileContent.content
+        .split('\n')
+        .filter((line) => line.trim().startsWith('gem '));
+
+      lines.forEach((line) => {
+        const match = line.match(/gem ['"]([^'"]+)['"](, *['"]([^'"]+)['"])?/);
+        if (match) {
+          const name = match[1];
+          const version = match[3] ?? 'unknown';
+          const dependency: Dependency = {
+            name,
+            version: this.normalizeVersion(version),
+            ecosystem: Ecosystem.RUBYGEMS,
+          };
+          this.addDependencyToGlobalMap(dependency, fileContent.path);
+        }
+      });
+    });
   }
 
   /**
@@ -550,7 +802,6 @@ class AnalysisService {
           // Keep only nodes with vulnerabilities OR nodes of type SELF
           const vulnerableNodes = dep.transitiveDependencies.nodes.filter(
             (node) =>
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               (node.vulnerabilities && node.vulnerabilities.length > 0) ||
               node.dependencyType === 'SELF',
           );
@@ -611,7 +862,6 @@ class AnalysisService {
         const transitiveHasVulns = dep.transitiveDependencies?.nodes?.some(
           (node) => node.vulnerabilities && node.vulnerabilities.length > 0,
         );
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         return hasVulns || transitiveHasVulns;
       });
       if (relevantDeps.length > 0) {
@@ -623,12 +873,14 @@ class AnalysisService {
     return filtered;
   }
 
-  async getAnalyzedDependencies(
+  /**
+   *
+   * @param dependencies - DependencyGroups with main dependencies
+   * @returns Promise<DependencyGroups> - DependencyGroups with vulnerabilities enriched
+   */
+  async enrichDependenciesWithVulnerabilities(
     dependencies: DependencyGroups,
   ): Promise<DependencyGroups> {
-    const osvApiBatchUrl = 'https://api.osv.dev/v1/querybatch';
-    const osvApiVulnUrl = 'https://api.osv.dev/v1/vulns/';
-    const batchSize = 1000;
     const vulnsIDs = new Set<string>();
 
     // Flatten all dependencies for batch processing
@@ -650,84 +902,179 @@ class AnalysisService {
     });
 
     try {
-      for (let i = 0; i < allForVuln.length; i += batchSize) {
-        const batch = allForVuln.slice(i, i + batchSize);
-        const queries: OSVQuery[] = batch.map((dep) => ({
-          package: { name: dep.name, ecosystem: dep.ecosystem },
-          version: dep.version,
-        }));
+      console.log(
+        `Processing ${allForVuln.length} dependencies in parallel batches...`,
+      );
+      this.progressService.progressUpdater(PROGRESS_STEPS[3], 0);
 
-        let paginatedQueries: {
-          query: OSVQuery;
-          depKey: string;
-          pageToken: string;
-        }[] = [];
+      // Process vulnerabilities for dependencies using parallel batches
+      const batches: Dependency[][] = [];
+      for (
+        let i = 0;
+        i < allForVuln.length;
+        i += this.performanceConfig.vulnBatchSize
+      ) {
+        batches.push(
+          allForVuln.slice(i, i + this.performanceConfig.vulnBatchSize),
+        );
+      }
 
-        const response = await axios.post<OSVBatchResponse>(osvApiBatchUrl, {
-          queries,
+      // Process batches sequentially with controlled concurrency
+      const globalPaginatedQueries: {
+        query: OSVQuery;
+        depKey: string;
+        pageToken: string;
+      }[] = [];
+
+      for (
+        let i = 0;
+        i < batches.length;
+        i += this.performanceConfig.vulnConcurrency
+      ) {
+        const concurrentBatches = batches.slice(
+          i,
+          i + this.performanceConfig.vulnConcurrency,
+        );
+
+        const batchPromises = concurrentBatches.map(async (batch) => {
+          const queries = batch.map((dep) => ({
+            package: { name: dep.name, ecosystem: dep.ecosystem },
+            version: dep.version,
+          }));
+
+          try {
+            const response = await this.retryApiCall(
+              () =>
+                axios.post<OSVBatchResponse>(OSV_DEV_VULN_BATCH_URL, {
+                  queries,
+                }),
+              3,
+              1000,
+            );
+
+            response.data?.results?.forEach((result, idx) => {
+              const dep = batch[idx];
+              const depKey = `${dep.ecosystem}:${dep.name}:${dep.version}`;
+              if (result.vulns) {
+                result.vulns.forEach((vuln) => {
+                  dep.vulnerabilities?.push({ id: vuln.id } as Vulnerability);
+                  vulnsIDs.add(vuln.id);
+                });
+              }
+              if (result.next_page_token) {
+                globalPaginatedQueries.push({
+                  query: queries[idx],
+                  depKey,
+                  pageToken: result.next_page_token,
+                });
+              }
+            });
+            return null;
+          } catch (error) {
+            console.error(`Error processing batch:`, error);
+            this.addStepError('Vulnerability Scanning', error);
+            return null;
+          }
         });
 
-        response.data.results.forEach((result, idx) => {
-          const dep = batch[idx];
-          const depKey = `${dep.ecosystem}:${dep.name}:${dep.version}`;
-          if (result.vulns) {
+        await Promise.all(batchPromises);
+
+        // Progress logging
+        const processedBatches = Math.min(
+          i + this.performanceConfig.vulnConcurrency,
+          batches.length,
+        );
+        const processPercentage = (processedBatches / batches.length) * 100;
+        console.log(
+          `OSV vulnerability scanning: Processed ${processedBatches}/${batches.length} batches`,
+        );
+        this.progressService.progressUpdater(
+          PROGRESS_STEPS[3],
+          processPercentage,
+        );
+      }
+
+      this.progressService.progressUpdater(PROGRESS_STEPS[3], 100);
+
+      // Handle pagination for all collected paginated queries
+      while (globalPaginatedQueries.length > 0) {
+        console.log(
+          `Processing ${globalPaginatedQueries.length} paginated queries...`,
+        );
+
+        const nextQueries = globalPaginatedQueries.map((pq) => ({
+          ...pq.query,
+          page_token: pq.pageToken,
+        }));
+        const depKeys = globalPaginatedQueries.map((pq) => pq.depKey);
+        globalPaginatedQueries.length = 0; // Clear the array
+
+        const nextResponse = await this.retryApiCall(
+          () =>
+            axios.post<OSVBatchResponse>(OSV_DEV_VULN_BATCH_URL, {
+              queries: nextQueries,
+            }),
+          3,
+          1000,
+        );
+
+        nextResponse.data.results.forEach((result, idx) => {
+          const dep = depMap.get(depKeys[idx]);
+          if (dep && result.vulns) {
             result.vulns.forEach((vuln) => {
               dep.vulnerabilities?.push({ id: vuln.id });
               vulnsIDs.add(vuln.id);
             });
           }
           if (result.next_page_token) {
-            paginatedQueries.push({
-              query: queries[idx],
-              depKey,
+            globalPaginatedQueries.push({
+              query: nextQueries[idx],
+              depKey: depKeys[idx],
               pageToken: result.next_page_token,
             });
           }
         });
-
-        // Pagination loop
-        while (paginatedQueries.length > 0) {
-          const nextQueries = paginatedQueries.map((pq) => ({
-            ...pq.query,
-            page_token: pq.pageToken,
-          }));
-          const depKeys = paginatedQueries.map((pq) => pq.depKey);
-          paginatedQueries = [];
-
-          const nextResponse = await axios.post<OSVBatchResponse>(
-            osvApiBatchUrl,
-            { queries: nextQueries },
-          );
-
-          nextResponse.data.results.forEach((result, idx) => {
-            const dep = depMap.get(depKeys[idx]);
-            if (dep && result.vulns) {
-              result.vulns.forEach((vuln) => {
-                dep.vulnerabilities?.push({ id: vuln.id });
-                vulnsIDs.add(vuln.id);
-              });
-            }
-            if (result.next_page_token) {
-              paginatedQueries.push({
-                query: nextQueries[idx],
-                depKey: depKeys[idx],
-                pageToken: result.next_page_token,
-              });
-            }
-          });
-        }
       }
 
-      // Fetch vuln details for all unique vuln IDs
-      const vulnDetails = await Promise.all(
-        Array.from(vulnsIDs).map(
-          async (vulnId) =>
-            (await axios.get<Vulnerability>(`${osvApiVulnUrl}${vulnId}`)).data,
-        ),
+      // Fetch vulnerability details for all unique vulnerability IDs
+      console.log(
+        `Fetching details for ${vulnsIDs.size} unique vulnerabilities...`,
       );
 
-      // Attach full vuln details to dependencies and transitive nodes
-      vulnDetails.forEach((vuln) => {
+      this.progressService.progressUpdater(PROGRESS_STEPS[4], 0);
+
+      const vulnDetailsResults = await this.processBatchesInParallel(
+        Array.from(vulnsIDs),
+        this.performanceConfig.vulnBatchSize,
+        this.performanceConfig.vulnConcurrency,
+        async (vulnId: string) => {
+          try {
+            const response = await this.retryApiCall(
+              () =>
+                axios.get<Vulnerability>(`${OSV_DEV_VULN_DET_URL}${vulnId}`),
+              4, // Reduced retries for vulnerability details
+              800,
+            );
+            return response.data;
+          } catch (error) {
+            console.warn(
+              `Failed to fetch vulnerability details for ${vulnId}:`,
+              error,
+            );
+            this.addStepError('Vulnerability Details Fetch', error);
+            return null;
+          }
+        },
+        PROGRESS_STEPS[4],
+      );
+
+      // Filter out failed requests
+      const validVulnDetails = vulnDetailsResults.filter(
+        (vuln) => vuln !== null,
+      );
+
+      // Update vulnerability details in dependencies
+      validVulnDetails.forEach((vuln) => {
         const matchingDeps = allForVuln.filter((d) =>
           d.vulnerabilities?.some((v) => v.id === vuln.id),
         );
@@ -737,8 +1084,9 @@ class AnalysisService {
             (v) => v.id === vuln.id,
           );
           const fixAvailable =
-            vuln?.affected?.[0]?.ranges?.[0]?.events?.filter((e) => e.fixed)[0]
-              ?.fixed ?? '';
+            vuln?.affected?.[0]?.ranges?.[0]?.events?.filter(
+              (e: { fixed?: string }) => e.fixed,
+            )[0]?.fixed ?? '';
           const fullVuln: Vulnerability = {
             id: vuln.id,
             summary: vuln.summary,
@@ -756,18 +1104,219 @@ class AnalysisService {
           }
         });
       });
+      this.progressService.progressUpdater(PROGRESS_STEPS[4], 100);
     } catch (err) {
       console.error('Error fetching vulnerabilities:', err);
+      this.addStepError('Vulnerability Enrichment', err);
       throw new Error('Failed to fetch vulnerabilities from osv.dev');
     }
     // Filter transitive dependencies to only keep vulnerable nodes/edges
     const vulnerableDeps = this.filterVulnerableTransitives(dependencies);
     // Filter main dependencies to only keep those with vulnerabilities or vulnerable transitives
     return this.filterMainDependencies(vulnerableDeps);
-    // return dependencies;
   }
 
+  /**
+   * Gets transitive dependencies for a list of dependencies from deps.dev
+   * @param dependencies - list of dependencies to get transitive dependencies for
+   * @returns Dependency[] - list of dependencies with transitive dependencies attached to them
+   */
+  async getTransitiveDependencies(
+    dependencies: DependencyGroups,
+  ): Promise<DependencyGroups> {
+    // Flatten all dependencies for batch processing
+    const allDeps: Dependency[] = Object.values(dependencies).flat();
+    const validDeps = allDeps.filter((dep) => dep.version !== 'unknown');
+
+    console.log(
+      `Fetching transitive dependencies for ${validDeps.length} dependencies...`,
+    );
+    this.progressService.progressUpdater(PROGRESS_STEPS[2], 0);
+
+    // Process transitive dependencies in parallel batches
+    const transitiveDepsResults = await this.processBatchesInParallel(
+      validDeps,
+      this.performanceConfig.transitiveBatchSize,
+      this.performanceConfig.transitiveConcurrency,
+      async (dep: Dependency): Promise<TransitiveDependencyResult> => {
+        try {
+          if (dep.version === 'unknown') {
+            throw new Error('Unknown version, skipping');
+          }
+          const transitiveUrl = `${DEPS_DEV_BASE_URL}/${dep.ecosystem}/packages/${encodeURIComponent(dep.name)}/versions/${encodeURIComponent(this.normalizeVersion(dep.version))}:dependencies`;
+
+          const response = await this.retryApiCall(
+            () => axios.get<DepsDevDependency>(transitiveUrl),
+            4,
+            800,
+            `Transitive dependencies for ${dep.name}@${dep.version}`,
+          );
+
+          const transitiveDeps = response.data;
+          if (transitiveDeps) {
+            const transitiveDependencies: TransitiveDependency = {
+              nodes: [],
+              edges: [],
+            };
+
+            // Map the data from deps.dev to our Dependency type
+            transitiveDeps.nodes.forEach((node) => {
+              transitiveDependencies.nodes?.push({
+                name: node.versionKey.name,
+                version: node.versionKey.version,
+                ecosystem: this.mapEcosystem(node.versionKey.system),
+                vulnerabilities: [],
+                dependencyType: node.relation,
+              });
+            });
+
+            // Add the edges from the deps.dev response
+            transitiveDependencies.edges = transitiveDeps.edges.map((edge) => ({
+              source: edge.fromNode,
+              target: edge.toNode,
+              requirement: edge.requirement,
+            }));
+
+            return {
+              dependency: dep,
+              transitiveDependencies,
+              success: true,
+            };
+          }
+        } catch (error) {
+          console.warn(
+            `Failed to fetch transitive dependencies for ${dep.name}@${dep.version}:`,
+            error instanceof Error ? error.message : error,
+          );
+          this.addStepError('Transitive Dependencies Fetch', error);
+        }
+
+        return {
+          dependency: dep,
+          transitiveDependencies: { nodes: [], edges: [] },
+          success: false,
+        };
+      },
+      PROGRESS_STEPS[2],
+    );
+
+    // Apply results back to the original dependencies
+    const erroredDeps: Dependency[] = [];
+
+    transitiveDepsResults.forEach((result) => {
+      if (result.success) {
+        result.dependency.transitiveDependencies =
+          result.transitiveDependencies;
+      } else {
+        erroredDeps.push({
+          name: result.dependency.name,
+          version: result.dependency.version,
+          ecosystem: result.dependency.ecosystem,
+        });
+      }
+    });
+
+    if (erroredDeps.length > 0) {
+      console.log(
+        `Failed to fetch transitive dependencies for ${erroredDeps.length} packages:`,
+        erroredDeps.map((d) => `${d.name}@${d.version}`).join(', '),
+      );
+      this.addStepError(
+        'Transitive Dependencies Fetch',
+        `Failed to fetch transitive dependencies for ${erroredDeps.length} packages:`,
+      );
+    }
+
+    this.progressService.progressUpdater(PROGRESS_STEPS[2], 100);
+    return dependencies;
+  }
+
+  /**
+   * Analyzes dependencies in a repository and returns vulnerabilities
+   * @param username - GitHub username/organization
+   * @param repo - Repository name
+   * @param branch - branch name (default: 'main'/'master')
+   * @returns Promise<DependencyApiResponse> - object containing parsed dependencies and transitive dependencies with enriched vulnerabilities
+   */
+  async analyseDependencies(
+    username: string,
+    repo: string,
+    branch: string,
+    fileContents?: ManifestFileContents,
+  ): Promise<DependencyApiResponse> {
+    try {
+      const dependenciesResponse = await this.getParsedManifestFileContents(
+        username,
+        repo,
+        branch,
+        fileContents,
+      );
+      const dependencies = dependenciesResponse.dependencies;
+
+      // console.log("Dependencies found:", dependencies);
+
+      if (!dependencies || Object.keys(dependencies).length === 0) {
+        return {
+          dependencies: {},
+          error: [
+            ...this.consolidateStepErrors(),
+            'No dependencies found in the repository',
+          ],
+        };
+      }
+
+      let dependenciesWithChildren = dependencies;
+      try {
+        dependenciesWithChildren =
+          await this.getTransitiveDependencies(dependencies);
+
+        console.log(
+          'Dependencies with transitive dependencies:',
+          dependenciesWithChildren,
+        );
+      } catch (error) {
+        console.warn(
+          'Failed to get transitive dependencies, proceeding with main dependencies only:',
+          error,
+        );
+        this.addStepError('Transitive Dependencies Analysis', error);
+      }
+
+      let analysedDependencies: DependencyGroups = dependenciesWithChildren;
+      try {
+        analysedDependencies = await this.enrichDependenciesWithVulnerabilities(
+          dependenciesWithChildren,
+        );
+      } catch (error) {
+        console.warn(
+          'Failed to enrich vulnerabilities, returning dependencies without vulnerability data:',
+          error,
+        );
+        this.addStepError('Vulnerability Analysis', error);
+      }
+
+      const consolidatedErrors = this.consolidateStepErrors();
+      this.progressService.progressUpdater(PROGRESS_STEPS[5], 100);
+      return {
+        dependencies: analysedDependencies,
+        error: consolidatedErrors.length > 0 ? consolidatedErrors : undefined,
+      };
+    } catch (error) {
+      this.addStepError('Overall Analysis', error);
+      return {
+        dependencies: {},
+        error: this.consolidateStepErrors(),
+      };
+    }
+  }
+
+  /**
+   * Analyzes a single manifest file's content and returns dependencies with vulnerabilities
+   * @param fileDetails - Object containing filename and content of the manifest file
+   * @returns Promise<DependencyApiResponse> - object containing parsed dependencies and transitive dependencies with enriched vulnerabilities
+   */
   async analyseFile(fileDetails: FileDetails): Promise<DependencyApiResponse> {
+    this.progressService.progressUpdater(PROGRESS_STEPS[0], 0);
     const { filename, content } = fileDetails;
     const parsedFileName =
       filename.split('_')[0] + '.' + filename.split('.')[1];
@@ -780,7 +1329,7 @@ class AnalysisService {
     if (!ecosystem) {
       return {
         dependencies: {},
-        error: 'Unsupported file type',
+        error: ['Unsupported file type'],
       };
     }
 
@@ -801,88 +1350,63 @@ class AnalysisService {
   }
 
   /**
-   * Gets transitive dependencies for a list of dependencies from deps.dev
-   * @param dependencies - list of dependencies to get transitive dependencies for
-   * @returns Dependency[] - list of dependencies with transitive dependencies attached to them
+   * Cleans and formats a dependency version string into standard SemVer format.
+   * Handles Git hashes, invalid formats, and normalizes to "major.minor.patch" format.
    */
-  async getTransitiveDependencies(
-    dependencies: DependencyGroups,
-  ): Promise<DependencyGroups> {
-    const depsDevErr: {
-      name: string;
-      version: string;
-      ecosystem: Ecosystem;
-    }[] = [];
-    const depsDevBaseUrl = 'https://api.deps.dev/v3/systems';
-
-    //iterate over each dep and attach the transitive dependencies to the object
-    await Promise.all(
-      Object.values(dependencies)
-        .flat()
-        .map(async (dep) => {
-          const transitiveDependencies: TransitiveDependency = {
-            nodes: [],
-            edges: [],
-          };
-
-          // console.log("Fetching transitive dependencies for:", dep.name, dep.version, dep.ecosystem);
-          if (dep.version === 'unknown') {
-            return;
-          }
-          try {
-            const transitiveUrl = `${depsDevBaseUrl}/${dep.ecosystem}/packages/${encodeURIComponent(dep.name)}/versions/${encodeURIComponent(this.formattedVersion(dep.version))}:dependencies`;
-            const transitiveDeps = (
-              await axios.get<DepsDevDependency>(transitiveUrl)
-            ).data;
-            //map the data from deps.dev to our Dependency type
-            if (transitiveDeps) {
-              transitiveDeps.nodes.map((node) => {
-                // console.log("NODE:", node.versionKey.system, this.mapEcosystem(node.versionKey.system));
-                // if (index > 0) {
-                transitiveDependencies.nodes?.push({
-                  name: node.versionKey.name,
-                  version: node.versionKey.version,
-                  ecosystem: this.mapEcosystem(node.versionKey.system),
-                  vulnerabilities: [],
-                  dependencyType: node.relation,
-                });
-                // }
-              });
-              //add the edges from the deps.dev response to the transitive dependencies
-              transitiveDependencies.edges = [
-                ...transitiveDeps.edges.map((edge) => {
-                  return {
-                    source: edge.fromNode,
-                    target: edge.toNode,
-                    requirement: edge.requirement,
-                  };
-                }),
-              ];
-            }
-
-            dep.transitiveDependencies = transitiveDependencies;
-            console.log(dep.name);
-            console.dir(transitiveDependencies, { depth: null });
-          } catch {
-            depsDevErr.push({
-              name: dep.name,
-              version: dep.version,
-              ecosystem: dep.ecosystem,
-            });
-          }
-        }),
-    );
-    console.log('error fetching transitive dependencies for:', depsDevErr);
-    return dependencies;
-  }
-
-  /**
-   * Cleans and normalizes a dependency version string.
-   */
-  cleanVersion(version: string | undefined | null): string {
+  normalizeVersion(version: string | undefined | null): string {
     if (!version || typeof version !== 'string') return 'unknown';
-    const cleaned = version.replace(/^[^\d]*/, '');
-    return cleaned ?? 'unknown';
+
+    const trimmed = version.trim();
+
+    // Handle special cases first
+    if (trimmed === 'unknown' || trimmed === '') return 'unknown';
+
+    // Check for Git commit hashes (40 character hex strings)
+    if (/^[a-f0-9]{40}$/i.test(trimmed)) {
+      return 'unknown';
+    }
+
+    // Check for Git hashes with dots (corrupted version format)
+    if (/^[a-f0-9]{20,}\./i.test(trimmed)) {
+      return 'unknown';
+    }
+
+    // Check for other Git-like hashes (7+ character hex strings without dots)
+    if (/^[a-f0-9]{7,}$/i.test(trimmed)) {
+      return 'unknown';
+    }
+
+    // Remove leading non-numeric characters
+    const cleaned = trimmed.replace(/^[^\d]*/, '');
+    if (!cleaned) return 'unknown';
+
+    // Split at first '-' or '+' (not at a dot)
+    const [core, ...extraParts] = cleaned.split(/(?=[-+])/);
+    const extra = extraParts.length ? extraParts.join('') : '';
+
+    // Split core into segments
+    const segments = core.split('.');
+
+    // Validate that we have reasonable version segments
+    const major =
+      segments[0] && segments[0] !== 'x' && segments[0] !== '*'
+        ? segments[0]
+        : '0';
+    const minor =
+      segments[1] && segments[1] !== 'x' && segments[1] !== '*'
+        ? segments[1]
+        : '0';
+    const patch =
+      segments[2] && segments[2] !== 'x' && segments[2] !== '*'
+        ? segments[2]
+        : '0';
+
+    // Check if major version is suspiciously long (likely a hash)
+    if (major.length > 10) {
+      return 'unknown';
+    }
+
+    return `${major}.${minor}.${patch}${extra}`;
   }
 
   /**
@@ -890,8 +1414,11 @@ class AnalysisService {
    */
   async fetchLatestVersionFromNpm(packageName: string): Promise<string> {
     try {
-      const response = await axios.get(
-        `https://registry.npmjs.org/${packageName}`,
+      const response = await this.retryApiCall(
+        () => axios.get(`https://registry.npmjs.org/${packageName}`),
+        2,
+        1000,
+        `NPM version lookup for ${packageName}`,
       );
       return response.data['dist-tags']?.latest ?? 'unknown';
     } catch (error) {
@@ -899,6 +1426,7 @@ class AnalysisService {
         `Failed to fetch latest version for ${packageName}:`,
         error,
       );
+      this.addStepError('Version Lookup', error);
       return 'unknown';
     }
   }
@@ -950,30 +1478,6 @@ class AnalysisService {
       default:
         return Ecosystem.NULL;
     }
-  }
-
-  formattedVersion(version: string): string {
-    if (!version || typeof version !== 'string') return 'unknown';
-    // Remove leading non-numeric characters
-    const cleaned = version.trim().replace(/^[^\d]*/, '');
-    // Split at first '-' or '+' (not at a dot)
-    const [core, ...extraParts] = cleaned.split(/(?=[-+])/);
-    const extra = extraParts.length ? extraParts.join('') : '';
-    // Split core into segments
-    const segments = core.split('.');
-    const major =
-      segments[0] && segments[0] !== 'x' && segments[0] !== '*'
-        ? segments[0]
-        : '0';
-    const minor =
-      segments[1] && segments[1] !== 'x' && segments[1] !== '*'
-        ? segments[1]
-        : '0';
-    const patch =
-      segments[2] && segments[2] !== 'x' && segments[2] !== '*'
-        ? segments[2]
-        : '0';
-    return `${major}.${minor}.${patch}${extra}`;
   }
 }
 

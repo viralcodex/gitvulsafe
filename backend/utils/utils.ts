@@ -1,4 +1,4 @@
-import { AiResponsePart } from '../constants/constants';
+import { AiResponsePart } from '../constants/model';
 
 /**
  * Utility function to parse AI response parts and extract text content
@@ -10,7 +10,7 @@ export function parseAiResponseParts(parts: AiResponsePart[]): string {
 
   // Scenario differentiation
   if (parts.length === 1 && parts[0].text) {
-    console.log('✓ Single complete response');
+    console.log('Single complete response');
     return parts[0].text;
   }
 
@@ -20,14 +20,14 @@ export function parseAiResponseParts(parts: AiResponsePart[]): string {
   );
 
   if (textParts.length > 1 && !hasOtherTypes) {
-    console.log('✓ Multiple text parts - response was split across parts');
+    console.log('Multiple text parts - response was split across parts');
     const combinedText = textParts.map((part) => part.text).join('');
     console.log(`Combined ${textParts.length} text parts into single response`);
     return combinedText;
   }
 
   if (hasOtherTypes) {
-    console.log('✓ Mixed content types detected:');
+    console.log('Mixed content types detected:');
     let fullTextResponse = '';
 
     for (const [index, part] of parts.entries()) {

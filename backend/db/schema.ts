@@ -7,7 +7,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { DependencyApiResponse } from '../constants/constants';
+import { DependencyApiResponse } from '../constants/model';
 
 export const dependencies = pgTable(
   'dependencies',

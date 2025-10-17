@@ -3,8 +3,9 @@ import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import multer from 'multer';
+
 import { config, isProduction, origin } from './config/env';
-import { DependencyApiResponse, manifestFiles, MulterRequest } from './constants/constants';
+import { DependencyApiResponse, manifestFiles } from './constants/model';
 import {
   getCachedAnalysis,
   upsertAnalysis,
@@ -15,6 +16,7 @@ import {
 import AgentsService from './service/agents_service';
 import AiService from './service/ai_service';
 import AnalysisService from './service/analysis_service';
+import ProgressService from './service/progress_service';
 import {
   analysisRateLimiter,
   aiRateLimiter,
@@ -31,6 +33,9 @@ import {
 const app = express();
 const PORT = config.port || 8080;
 const upload = multer();
+
+// Create a global progress service instance for broadcasting
+const globalProgressService = new ProgressService();
 
 if (isProduction) {
   app.use(
@@ -94,7 +99,7 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     environment: config.nodeEnv,
@@ -204,7 +209,10 @@ app.post(
         // Continue with fresh analysis if DB check fails
       }
 
-      const analysisService = new AnalysisService(github_pat);
+      const analysisService = new AnalysisService(
+        github_pat,
+        globalProgressService,
+      );
 
       try {
         const analysisResults = await analysisService.analyseDependencies(
@@ -397,6 +405,7 @@ app.get('/fixPlan', fixPlanRateLimiter, (req: Request, res: Response) => {
     if (!username || !repo || !branch) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
     console.log('Received fixPlan request for:', { username, repo, branch });
 
     res.writeHead(200, {
@@ -418,7 +427,7 @@ app.get('/fixPlan', fixPlanRateLimiter, (req: Request, res: Response) => {
     const timeout = setTimeout(() => {
       res.write(`data: ${JSON.stringify({ error: 'Request timeout' })}\n\n`);
       res.end();
-    }, 300000); // 300 seconds timeout
+    }, 300000);
 
     req.on('close', () => {
       console.log('Connection closed by client');
@@ -511,18 +520,87 @@ app.get('/fixPlan', fixPlanRateLimiter, (req: Request, res: Response) => {
   });
 });
 
-// Global error handling middleware
+app.get('/progress', (req: Request, res: Response) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'X-Accel-Buffering': 'no',
+  });
+
+  // Send initial connection confirmation
+  res.write(
+    `data: ${JSON.stringify({
+      type: 'connection',
+      message: 'Connected to progress updates',
+      timestamp: new Date().toISOString(),
+    })}\n\n`,
+  );
+
+  // Set up progress callback to send updates via SSE
+  const progressCallback = (step: string, progress: number) => {
+    if (!res.destroyed) {
+      res.write(
+        `data: ${JSON.stringify({
+          step,
+          progress,
+          timestamp: new Date().toISOString(),
+        })}\n\n`,
+      );
+    }
+  };
+
+  globalProgressService.addCallback(progressCallback);
+
+  if (globalProgressService.isEmpty()) {
+    res.end();
+  }
+
+  // Set a timeout to prevent hanging connections
+  const timeout = setTimeout(() => {
+    if (!res.destroyed) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'timeout',
+          message: 'Connection timeout',
+          timestamp: new Date().toISOString(),
+        })}\n\n`,
+      );
+      res.end();
+    }
+  }, 200000); // 4 minutes timeout
+
+  req.on('close', () => {
+    console.log('Progress connection closed by client');
+    globalProgressService.removeCallback(progressCallback);
+    clearTimeout(timeout);
+    if (!res.destroyed) {
+      res.end();
+    }
+  });
+
+  req.on('error', () => {
+    console.log('Progress connection error');
+    globalProgressService.removeCallback(progressCallback);
+    clearTimeout(timeout);
+    if (!res.destroyed) {
+      res.end();
+    }
+  });
+});
+
 app.use((err: Error, req: Request, res: Response) => {
   console.error('Unhandled error:', err);
 
   if (isProduction) {
-    // Don't leak error details in production
     res.status(500).json({
       error: 'Internal server error',
       timestamp: new Date().toISOString(),
     });
   } else {
-    // Show full error details in development
     res.status(500).json({
       error: err.message,
       stack: err.stack,
@@ -531,7 +609,6 @@ app.use((err: Error, req: Request, res: Response) => {
   }
 });
 
-// Handle 404 routes
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     error: 'Route not found',
@@ -541,16 +618,15 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('Shutting down gracefully...');
+  console.log('Shutting down...');
   server.close(() => {
     console.log('Server closed.');
     process.exit(0);
   });
 });
 process.on('SIGTERM', () => {
-  console.log('Shutting down gracefully...');
+  console.log('Shutting down...');
   server.close(() => {
     console.log('Server closed.');
     process.exit(0);

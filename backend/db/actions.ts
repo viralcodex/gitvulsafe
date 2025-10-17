@@ -1,12 +1,12 @@
 import { eq, and } from 'drizzle-orm';
 
-import { DependencyApiResponse } from '../constants/constants';
+import { DependencyApiResponse } from '../constants/model';
 import { db } from '../db/db';
 
 import { dependencies, uploadedManifests } from './schema';
 
 // Get branches from any existing analysis for this repo (regardless of branch)
-export async function getCachedBranches(username: string, repo: string) {
+export function getCachedBranches(username: string, repo: string) {
   return db
     .select({ branches: dependencies.branches, branch: dependencies.branch })
     .from(dependencies)
@@ -16,7 +16,7 @@ export async function getCachedBranches(username: string, repo: string) {
     .limit(1);
 }
 
-export async function getCachedAnalysis(
+export function getCachedAnalysis(
   username: string,
   repo: string,
   branch: string,
@@ -34,7 +34,7 @@ export async function getCachedAnalysis(
     .limit(1);
 }
 
-export async function upsertAnalysis({
+export function upsertAnalysis({
   username,
   repo,
   branch,
