@@ -55,7 +55,6 @@ export const useRepoData = (url: string | null) => {
       const branchesResponse = await getRepoBranches(
         sanitizedUsername,
         sanitizedRepo,
-        process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined,
         page,
         pageSize
       );

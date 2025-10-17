@@ -12,11 +12,12 @@ const baseUrl =
   process.env.NODE_ENV === "production"
     ? process.env.NEXT_PUBLIC_API_PROD_URL
     : process.env.NEXT_PUBLIC_API_DEV_URL;
+const github_pat =
+  process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined;
 
 export async function getRepoBranches(
   username: string,
   repo: string,
-  github_pat?: string,
   page?: number,
   pageSize?: number
 ): Promise<BranchesApiResponse> {
@@ -54,8 +55,6 @@ export async function getManifestFileContents(
 ): Promise<ManifestFileContentsApiResponse> {
   try {
     const url = new URL(`${baseUrl}/manifestData`);
-    const github_pat =
-      process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined;
 
     const response = await fetch(url, {
       method: "POST",
@@ -89,8 +88,6 @@ export async function analyseDependencies(
     const url = file
       ? new URL(`${baseUrl}/analyseFile`)
       : new URL(`${baseUrl}/analyseDependencies`);
-    const github_pat =
-      process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined;
 
     const response = await fetch(url, {
       method: "POST",
@@ -263,7 +260,7 @@ export function progressSSE(
     let lastStepIndex = -1; // To track the last step index processed
     eventSource.onmessage = (event) => {
       try {
-        const data : ProgressSSE = JSON.parse(event.data);
+        const data: ProgressSSE = JSON.parse(event.data);
         // console.log("SSE Data:", data);
         if (data.type === "connection") {
           // console.log("SSE Connection established:", data.message);
