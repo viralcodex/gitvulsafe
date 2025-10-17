@@ -3,11 +3,7 @@
   "type": "object",
   "title": "Vulnerability Summary Schema",
   "description": "Schema for AI-generated vulnerability summaries with strict formatting and prioritization rules.",
-  "required": [
-    "summary",
-    "actionable_items",
-    "explaination"
-  ],
+  "required": ["summary", "actionable_items", "explaination"],
   "properties": {
     "summary": {
       "type": "string",
@@ -26,8 +22,8 @@
       "maxItems": 3,
       "description": "List of actionable items based on the summary and what to do next based on what is asked in the prompt. Each item should be a concise action that can be taken based on the summary provided."
     },
-    "explaination":{
-        "type": "string",
+    "explaination": {
+      "type": "string",
       "minLength": 10,
       "maxLength": 50,
       "description": "Explaination of the selected text without repeating the summary. Must be concise and non-redundant. Use surrounding context for more relevant response."

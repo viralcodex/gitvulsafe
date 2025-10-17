@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { Ecosystem } from '../constants/constants';
+import { Ecosystem } from '../constants/model';
 import GithubService from '../service/analysis_service';
 
 jest.mock('axios');
@@ -124,7 +124,8 @@ describe('GithubService transitive vulnerability enrichment', () => {
     });
 
     const service = new GithubService();
-    const result = await service.getAnalyzedDependencies(mockedDependencies);
+    const result =
+      await service.enrichDependenciesWithVulnerabilities(mockedDependencies);
 
     // Main dep should have vuln
     expect(result['package.json'][0].vulnerabilities).toEqual(

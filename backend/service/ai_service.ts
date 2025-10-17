@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-import { Vulnerability } from '../constants/constants';
+import { Vulnerability } from '../constants/model';
 import { prompts } from '../prompts/prompts';
 import inlineaiSummarySchema from '../prompts/schemas/inlineai-summary-schema.json';
 import vulnerabilitySummarySchema from '../prompts/schemas/vulnerability-summary-schema.json';

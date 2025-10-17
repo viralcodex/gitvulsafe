@@ -6,10 +6,10 @@ export default {
   testMatch: [
     '**/tests/**/*.spec.ts',
     '**/tests/**/*.test.ts',
-    '**/__tests__/**/*.ts'
+    '**/__tests__/**/*.ts',
   ],
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.ts$': 'ts-jest',
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: [
@@ -17,15 +17,15 @@ export default {
     'utils/**/*.ts',
     'db/**/*.ts',
     '!**/*.d.ts',
-    '!**/node_modules/**'
+    '!**/node_modules/**',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: [],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1'
+    '^@/(.*)$': '<rootDir>/$1',
   },
   testTimeout: 10000,
   clearMocks: true,
-  restoreMocks: true
+  restoreMocks: true,
 };

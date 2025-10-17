@@ -3,7 +3,7 @@ import { writeFileSync } from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
-import { Dependency, DependencyApiResponse } from '../constants/constants';
+import { Dependency, DependencyApiResponse } from '../constants/model';
 import { prompts } from '../prompts/prompts';
 import vulnerabilityFixResponseSchema from '../prompts/schemas/vulnerability_fix_plan_response_schema.json';
 import { parseAiResponseParts } from '../utils/utils';
