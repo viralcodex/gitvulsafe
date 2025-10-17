@@ -214,7 +214,6 @@ const Page = () => {
 
   const onError = useCallback((error: string) => {
     toast.dismiss();
-    toast.error("Error generating fix plan");
 
     const errorParts = error.split(" ");
     let dependencyKey = "";
@@ -238,11 +237,11 @@ const Page = () => {
   }, []);
 
   const onComplete = useCallback(() => {
+    toast.dismiss();
     toast.success("Fix plan generation completed!");
     setFixPlanComplete(true);
     setIsFixPlanLoading(false);
-    // console.log(fixPlan);
-  }, []);
+  }, [setFixPlanComplete, setIsFixPlanLoading]);
 
   const generateFixPlan = useCallback(
     async (regenerateFixPlan: boolean = false) => {

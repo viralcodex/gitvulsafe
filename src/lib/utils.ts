@@ -202,12 +202,3 @@ export const downloadFixPlanPDF = async (
 ) => {
   if (!fixPlanRef.current) return;
 };
-
-//a function to get the dots animation for loading text one every 500ms
-export const getDots = (() => {
-  let dotCount = 0;
-  return () => {
-    dotCount = (dotCount + 1) % 4; // Cycle through 0, 1, 2, 3
-    return ".".repeat(dotCount);
-  };
-});

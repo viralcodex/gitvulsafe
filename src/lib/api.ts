@@ -3,7 +3,6 @@ import {
   ManifestFileContentsApiResponse,
   ProgressSSE,
   Vulnerability,
-  VulnerabilityFix,
 } from "@/constants/model";
 import { getNewFileName } from "./utils";
 import { progressSteps } from "@/constants/constants";
@@ -12,6 +11,7 @@ const baseUrl =
   process.env.NODE_ENV === "production"
     ? process.env.NEXT_PUBLIC_API_PROD_URL
     : process.env.NEXT_PUBLIC_API_DEV_URL;
+
 const github_pat =
   process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined;
 
@@ -215,37 +215,6 @@ export async function getInlineAiResponse(
     throw new Error(
       "Failed to get inline AI response. Please try again later."
     );
-  }
-}
-
-export async function getFixPlan(
-  username: string,
-  repo: string,
-  branch: string
-): Promise<VulnerabilityFix> {
-  try {
-    const url = new URL(`${baseUrl}/fixPlan`);
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, repo, branch }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to generate fix plan");
-    }
-
-    if (response.status === 429) {
-      return await response.json();
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error generating fix plan:", error);
-    throw new Error("Failed to generate fix plan. Please try again later.");
   }
 }
 

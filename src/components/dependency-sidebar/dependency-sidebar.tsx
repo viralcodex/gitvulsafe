@@ -145,7 +145,10 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     }
     setIsLoading(true);
     setError(null);
-
+    toast.dismiss();
+    toast.loading("Generating AI Summary...", {
+      duration:1500,
+    });
     const vulnerabilities = {
       name: allDetails?.name,
       version: allDetails?.version,

@@ -25,7 +25,7 @@ const ErrorBadge = (props: ErrorBadgeProps) => {
   return (
     <div
       className={cn(
-        "absolute bottom-4 flex flex-col justify-end px-4 cursor-pointer z-999",
+        "absolute bottom-4 flex flex-col justify-end px-4 cursor-pointer z-100",
         isMobile ? "w-[70%]" : "w-fit max-w-[75%]"
       )}
       onMouseEnter={() => setErrorClicked(true)}

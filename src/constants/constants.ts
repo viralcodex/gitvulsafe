@@ -16,7 +16,10 @@ export const progressSteps: { [key: string]: string } = {
   FETCHING_TRANSITIVE_DEPENDENCIES: "Fetching transitive dependencies",
   FETCHING_VULNERABILTIES_ID: "Fetching vulnerabilities IDs",
   FETCHING_VULNERABILTIES_DETAILS: "Fetching vulnerabilities details",
-  FINALISING_RESULTS: "Almost Done",
-  TAKING_TOO_LONG: "Just a tad bit longer",
-  IS_EVERYTHING_OK: "Hoping everything is okay",
+  FINALISING_RESULTS: "Almost Done"
 };
+
+export const PROGRESS_MESSAGES = [
+  "Almost done here",
+  "Just a tad more time",
+];
