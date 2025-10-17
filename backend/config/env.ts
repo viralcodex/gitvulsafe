@@ -7,7 +7,9 @@ export const config = {
   port: parseInt(process.env.PORT ?? '4000', 10),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   googleApiKey: process.env.GOOGLE_API_KEY ?? '',
-  databaseUrl: process.env.DATABASE_URL ?? '',
+  databaseUrl:
+    process.env.DATABASE_URL ??
+    'postgresql://dephound:mypassword@localhost:5432/dephound',
 };
 
 export const isProduction = config.nodeEnv === 'production';
