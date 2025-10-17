@@ -1,4 +1,5 @@
-import { Dependency, manifestFiles } from "@/constants/constants";
+import { Dependency } from "@/constants/model";
+import { manifestFiles } from "@/constants/constants";
 import { clsx, type ClassValue } from "clsx";
 import { RefObject } from "react";
 import { twMerge } from "tailwind-merge";
@@ -201,3 +202,12 @@ export const downloadFixPlanPDF = async (
 ) => {
   if (!fixPlanRef.current) return;
 };
+
+//a function to get the dots animation for loading text one every 500ms
+export const getDots = (() => {
+  let dotCount = 0;
+  return () => {
+    dotCount = (dotCount + 1) % 4; // Cycle through 0, 1, 2, 3
+    return ".".repeat(dotCount);
+  };
+});

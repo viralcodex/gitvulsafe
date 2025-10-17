@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import * as d3 from "d3";
 import {
   EcosystemGraphMap,
   GraphEdge,
   GraphNode,
   Relation,
-} from "@/constants/constants";
+} from "@/constants/model";
 import { cn } from "@/lib/utils";
 import { Badge } from "./ui/badge";
 import EmptyCard from "./empty-card";
 import DiagramControls from "./diagram-controls";
-import { LucideLoader2 } from "lucide-react";
+import DiagramProgress from "./diagram-progress";
+import ErrorBadge from "./error-badge";
 
 interface DepDiagramProps {
   svgRef: React.RefObject<SVGSVGElement | null>;
@@ -20,13 +21,13 @@ interface DepDiagramProps {
   selectedEcosystem?: string;
   className?: string;
   isLoading?: boolean;
-  isSidebarExpanded?: boolean;
   isMobile?: boolean;
   windowSize: { width: number; height: number };
   isDiagramExpanded?: boolean;
   isNodeClicked?: boolean;
   isFixPlanLoading: boolean;
   error: string;
+  manifestError: string[];
   onNodeClick?: (g: GraphNode) => void;
   setIsLoading?: (loading: boolean) => void;
   setIsMobile?: (isMobile: boolean) => void;
@@ -41,12 +42,11 @@ const DepDiagram = ({
   graphData,
   selectedEcosystem,
   isLoading,
-  isSidebarExpanded,
   isMobile,
   windowSize,
   isDiagramExpanded,
   isNodeClicked,
-  error,
+  manifestError,
   onNodeClick,
   setIsDiagramExpanded,
 }: DepDiagramProps) => {
@@ -59,10 +59,19 @@ const DepDiagram = ({
   const [highlightedEdges, setHighlightedEdges] = useState<Set<string>>(
     new Set<string>()
   );
-  const [scale, setScale] = useState<number>(selectedNodeId ? 0.9 : 0.8);
+  const [scale, setScale] = useState<number>(0.8);
   const resetRef = useRef<() => void>(() => {});
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
-  const svgSelectionRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
+  const svgSelectionRef = useRef<d3.Selection<
+    SVGSVGElement,
+    unknown,
+    null,
+    undefined
+  > | null>(null);
+  const [BFSPathData, setBFSPathData] =
+    useState<
+      Map<string, { pathNodes: Set<GraphNode>; pathEdges: Set<string> }>
+    >();
 
   // Memoize calculated dimensions to prevent unnecessary re-renders
   const {
@@ -72,7 +81,9 @@ const DepDiagram = ({
     scaleHeight,
     centerPositionX,
     centerPositionY,
+    nodes
   } = useMemo(() => {
+    // Calculate dimensions first, regardless of data availability
     const calculatedWidth = isMobile
       ? windowSize.width - 20
       : isNodeClicked
@@ -88,13 +99,28 @@ const DepDiagram = ({
         : windowSize.height - 270 - 8;
 
     // Use a fixed scale value for layout calculations to prevent re-renders
-    const layoutScale = selectedNodeId ? 0.8 : 0.7;
+    const layoutScale = 0.7;
     const calculatedScaleWidth = calculatedWidth / layoutScale;
     const calculatedScaleHeight = calculatedHeight / layoutScale;
     const calculatedCenterPositionX =
       (calculatedWidth - calculatedScaleWidth) / 2;
     const calculatedCenterPositionY =
       (calculatedHeight - calculatedScaleHeight) / 2;
+
+    // Only return null for nodes/edges if data is truly missing
+    if (!graphData || !selectedEcosystem || !graphData[selectedEcosystem]) {
+      return {
+        width: calculatedWidth,
+        height: calculatedHeight,
+        scaleWidth: calculatedScaleWidth,
+        scaleHeight: calculatedScaleHeight,
+        centerPositionX: calculatedCenterPositionX,
+        centerPositionY: calculatedCenterPositionY,
+        nodes: null
+      };
+    }
+
+    const { nodes } = graphData[selectedEcosystem];
 
     return {
       width: calculatedWidth,
@@ -103,113 +129,138 @@ const DepDiagram = ({
       scaleHeight: calculatedScaleHeight,
       centerPositionX: calculatedCenterPositionX,
       centerPositionY: calculatedCenterPositionY,
+      nodes: nodes
     };
-  }, [
-    isMobile,
-    windowSize.width,
-    windowSize.height,
-    isNodeClicked,
-    isDiagramExpanded,
-    selectedNodeId,
-  ]);
+  }, [graphData, selectedEcosystem, isMobile, windowSize.width, windowSize.height, isNodeClicked, isDiagramExpanded]);
+
+   const getHighlightedPathAndEdges = useCallback(
+     (selectedId: string) => {
+      if (!graphData || !selectedEcosystem || !graphData[selectedEcosystem] ||
+          !graphData[selectedEcosystem].nodes || !graphData[selectedEcosystem].edges) {
+        return {
+          pathNodes: new Set<GraphNode>(),
+          pathEdges: new Set<string>(),
+        };
+      }
+      const { nodes: currentPathNodes, edges: currentPathEdges } = graphData[selectedEcosystem];
+      if (BFSPathData && BFSPathData.has(selectedId)) {
+         const cachedEdges = BFSPathData.get(selectedId)?.pathEdges;
+         const cachedNodes = BFSPathData.get(selectedId)?.pathNodes;
+         return {
+           pathNodes: cachedNodes || new Set<GraphNode>(),
+           pathEdges: cachedEdges || new Set<string>(),
+         };
+       }
+       const pathMap: Record<string, GraphNode> = {};
+       const resultPathNodes = new Set<GraphNode>();
+       const resultPathEdges = new Set<string>();
+       const queue: GraphNode[] = [];
+       const visited = new Set<string>();
+
+       const startNode = currentPathNodes.find((n: GraphNode) => n.type === Relation.CENTER);
+       if (!startNode) return { pathNodes: resultPathNodes, pathEdges: resultPathEdges };
+
+       queue.push(startNode);
+       visited.add(startNode.id);
+
+       while (queue.length > 0) {
+         const currentNode = queue.shift();
+         if (!currentNode) continue;
+
+         if (currentNode.id === selectedId) {
+           // Reconstruct path (backtracking)
+           let current = currentNode;
+           while (current) {
+             resultPathNodes.add(current);
+             const parent = pathMap[current.id];
+             if (parent) {
+               // Find the edge between parent and current
+               const edge = currentPathEdges.find(
+                 (e: GraphEdge) =>
+                   ((e.source as GraphNode).id === parent.id &&
+                     (e.target as GraphNode).id === current.id) ||
+                   ((e.source as GraphNode).id === current.id &&
+                     (e.target as GraphNode).id === parent.id)
+               );
+               if (edge) {
+                 resultPathEdges.add(
+                   `${(edge.source as GraphNode).id}-${(edge.target as GraphNode).id}`
+                 );
+               }
+             }
+             current = parent;
+           }
+           break;
+         }
+
+         // Add neighbors to queue
+         for (const edge of currentPathEdges) {
+           const sourceId =
+             (edge.source as GraphNode).id || (edge.source as string);
+           const targetId =
+             (edge.target as GraphNode).id || (edge.target as string);
+
+           if (sourceId === currentNode.id && !visited.has(targetId)) {
+             const targetNode = currentPathNodes.find((n: GraphNode) => n.id === targetId);
+             if (targetNode) {
+               queue.push(targetNode);
+               visited.add(targetId);
+               pathMap[targetId] = currentNode;
+             }
+           } else if (targetId === currentNode.id && !visited.has(sourceId)) {
+             const sourceNode = currentPathNodes.find((n: GraphNode) => n.id === sourceId);
+             if (sourceNode) {
+               queue.push(sourceNode);
+               visited.add(sourceId);
+               pathMap[sourceId] = currentNode;
+             }
+           }
+         }
+       }
+       setBFSPathData((prev) => {
+         const newMap = new Map(prev);
+         newMap.set(selectedId, { pathNodes: resultPathNodes, pathEdges: resultPathEdges });
+         return newMap;
+       });
+       return { pathNodes: resultPathNodes, pathEdges: resultPathEdges };
+     },
+     [BFSPathData, graphData, selectedEcosystem]
+   );
+  
 
   useEffect(() => {
-    if (!graphData || !selectedEcosystem || !graphData[selectedEcosystem] || !svgRef.current)
+    // More robust checks to prevent diagram disappearing
+    if (!svgRef.current || !graphData || !selectedEcosystem || !graphData[selectedEcosystem]) {
       return;
+    }
+    
+    const currentData = graphData[selectedEcosystem];
+    // if (!currentData || !currentData.nodes || !currentData.edges || 
+    //     !Array.isArray(currentData.nodes) || !Array.isArray(currentData.edges) ||
+    //     currentData.nodes.length === 0) {
+    //   return;
+    // }
+    
+    // Use the data from graphData directly to avoid stale closures
+    const { nodes: currentNodes, edges: currentEdges } = currentData;
 
     // Capture the current scale value to use throughout this effect
     const currentScale = scale;
 
-    const { nodes, edges } = graphData[selectedEcosystem];
-
-    if (!nodes || !edges) return;
-
     // Find center node immediately
-    const centerNodeData = nodes.find((n) => n.type === Relation.CENTER);
+    const centerNodeData = currentNodes.find((n) => n.type === Relation.CENTER);
 
     if (centerNodeData) {
       setCenterNode(centerNodeData);
     }
 
     // Initialize center node at the center position immediately
-    if (centerNodeData) {
+    if (centerNodeData && scaleWidth && scaleHeight) {
       centerNodeData.x = scaleWidth / 2;
       centerNodeData.y = scaleHeight / 2;
       centerNodeData.fx = scaleWidth / 2;
       centerNodeData.fy = scaleHeight / 2;
     }
-
-    //BFS: Helper function to get highlighted path and edges
-    const getHighlightedPathAndEdges = (selectedId: string) => {
-      const pathMap: Record<string, GraphNode> = {};
-      const pathNodes = new Set<GraphNode>();
-      const pathEdges = new Set<string>();
-      const queue: GraphNode[] = [];
-      const visited = new Set<string>();
-
-      const startNode = nodes.find((n) => n.type === Relation.CENTER);
-      if (!startNode) return { pathNodes, pathEdges };
-
-      queue.push(startNode);
-      visited.add(startNode.id);
-
-      while (queue.length > 0) {
-        const currentNode = queue.shift();
-        if (!currentNode) continue;
-
-        if (currentNode.id === selectedId) {
-          // Reconstruct path (backtracking)
-          let current = currentNode;
-          while (current) {
-            pathNodes.add(current);
-            const parent = pathMap[current.id];
-            if (parent) {
-              // Find the edge between parent and current
-              const edge = edges.find(
-                (e) =>
-                  ((e.source as GraphNode).id === parent.id &&
-                    (e.target as GraphNode).id === current.id) ||
-                  ((e.source as GraphNode).id === current.id &&
-                    (e.target as GraphNode).id === parent.id)
-              );
-              if (edge) {
-                pathEdges.add(
-                  `${(edge.source as GraphNode).id}-${(edge.target as GraphNode).id}`
-                );
-              }
-            }
-            current = parent;
-          }
-          break;
-        }
-
-        // Add neighbors to queue
-        for (const edge of edges) {
-          const sourceId =
-            (edge.source as GraphNode).id || (edge.source as string);
-          const targetId =
-            (edge.target as GraphNode).id || (edge.target as string);
-
-          if (sourceId === currentNode.id && !visited.has(targetId)) {
-            const targetNode = nodes.find((n) => n.id === targetId);
-            if (targetNode) {
-              queue.push(targetNode);
-              visited.add(targetId);
-              pathMap[targetId] = currentNode;
-            }
-          } else if (targetId === currentNode.id && !visited.has(sourceId)) {
-            const sourceNode = nodes.find((n) => n.id === sourceId);
-            if (sourceNode) {
-              queue.push(sourceNode);
-              visited.add(sourceId);
-              pathMap[sourceId] = currentNode;
-            }
-          }
-        }
-      }
-
-      return { pathNodes, pathEdges };
-    };
 
     // console.log("Rendering graph:", nodes, edges);
 
@@ -266,7 +317,7 @@ const DepDiagram = ({
       .append("g")
       .attr("stroke", "#aaa")
       .selectAll("line")
-      .data(edges as GraphEdge[])
+      .data(currentEdges as GraphEdge[])
       .enter()
       .append("line")
       .attr("stroke-width", 1.5)
@@ -287,7 +338,7 @@ const DepDiagram = ({
     const node = zoomGroup
       .append("g")
       .selectAll("circle")
-      .data(nodes)
+      .data(currentNodes)
       .enter()
       .append("circle")
       .attr("filter", (d) => {
@@ -343,6 +394,7 @@ const DepDiagram = ({
           d.vulnCount! > 0 &&
           onNodeClick
         ) {
+          console.log("EVENT", event, d);
           if (selectedNodeId === d.id) {
             setSelectedNodeId(null);
             setHighlightedPath(new Set<GraphNode>());
@@ -353,8 +405,8 @@ const DepDiagram = ({
             setHighlightedPath(pathNodes);
             setHighlightedEdges(pathEdges);
           }
-          center(d.id);
           onNodeClick(d);
+          setTimeout(() => center(d.id), 200); // Center after state updates
         }
       });
 
@@ -394,7 +446,7 @@ const DepDiagram = ({
     const severityText = zoomGroup
       .append("g")
       .selectAll("text.severity")
-      .data(nodes)
+      .data(currentNodes)
       .enter()
       .append("text")
       .attr("class", "severity")
@@ -415,7 +467,7 @@ const DepDiagram = ({
     const label = zoomGroup
       .append("g")
       .selectAll("text")
-      .data(nodes)
+      .data(currentNodes)
       .enter()
       .append("text")
       .text((d) => d.label)
@@ -429,7 +481,7 @@ const DepDiagram = ({
     const version = zoomGroup
       .append("g")
       .selectAll("text")
-      .data(nodes)
+      .data(currentNodes)
       .enter()
       .append("text")
       .text((d) =>
@@ -453,21 +505,19 @@ const DepDiagram = ({
       })
       .on("end", (event) => {
         setIsDragging(false);
-        // Update scale state - this won't trigger re-render since scale is not in useEffect deps
         setScale(event.transform.k);
       });
 
-    // Store zoom behavior for programmatic control
     zoomRef.current = zoom;
     svg.call(zoom);
 
     // Force simulation for positioning nodes
     const simulation = d3
-      .forceSimulation(nodes)
+      .forceSimulation(currentNodes)
       .force(
         "edge",
         d3
-          .forceLink(edges)
+          .forceLink(currentEdges)
           .id((d: d3.SimulationNodeDatum) => (d as GraphNode).id)
           .distance((d: d3.SimulationLinkDatum<d3.SimulationNodeDatum>) => {
             const edge = d as GraphEdge;
@@ -525,22 +575,18 @@ const DepDiagram = ({
           if (d.type === Relation.CENTER) return "#EDEDED";
           if (d.vulnCount === 0) return "#EDEDED";
 
-          // Highlight selected node with gold color
           if (d.id === selectedNodeId) return "#FFD700";
 
-          // Highlight path nodes with a lighter gold color
           if (highlightedPath.has(d)) return "#FFE55C";
 
           return colorScale(d.severity || 0);
         })
         .attr("stroke", (d) => {
-          // Update border color during animation
           if (d.id === selectedNodeId) return "#FEFEFE";
           if (highlightedPath.has(d)) return "#FEFEFE";
           return "#fff";
         })
         .attr("stroke-width", (d) => {
-          // Update border width during animation
           if (d.id === selectedNodeId) return 3;
           if (highlightedPath.has(d)) return 2;
           return 1.5;
@@ -599,7 +645,7 @@ const DepDiagram = ({
     function center(targetNodeId?: string) {
       const nodeIdToCenter = targetNodeId || selectedNodeId;
       let targetNode: GraphNode | undefined;
-      if (nodeIdToCenter) {
+      if (nodeIdToCenter && nodes) {
         const selectedNode = nodes.find((n) => n.id === nodeIdToCenter);
         if (
           selectedNode &&
@@ -616,18 +662,26 @@ const DepDiagram = ({
       if (
         targetNode &&
         typeof targetNode.x === "number" &&
-        typeof targetNode.y === "number"
+        typeof targetNode.y === "number" &&
+        width &&
+        height
       ) {
         const tx = width / 2 - targetNode.x * currentScale;
         const ty = height / 2 - targetNode.y * currentScale;
-        console.log("Centering on node:", targetNode.label, "at", tx, ty);
+        console.log("Centering on node:", targetNode.label, "at", {
+          selectedNodeId,
+          targetNodeX: targetNode.x,
+          targetNodeY: targetNode.y,
+          tx,
+          ty,
+          width,
+          height,
+          currentScale,
+        });
         const transform = d3.zoomIdentity.translate(tx, ty).scale(currentScale);
         svg.transition().duration(0).call(zoom.transform, transform);
       }
     }
-
-    // Only center on the center node after first render if no node is selected
-    const timeoutID: NodeJS.Timeout | null = null;
 
     // Center the graph on initial load
     if (!selectedNodeId && centerNodeData) {
@@ -639,11 +693,15 @@ const DepDiagram = ({
     return () => {
       simulation.stop();
       svg.selectAll("*").remove();
-      if (timeoutID) clearTimeout(timeoutID);
+      zoomRef.current = null;
+      svgSelectionRef.current = null;
+      resetRef.current = () => {};
+      setBFSPathData(
+        new Map<string, { pathNodes: Set<GraphNode>; pathEdges: Set<string> }>()
+      );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    svgRef,
     graphData,
     selectedEcosystem,
     selectedNodeId,
@@ -658,9 +716,9 @@ const DepDiagram = ({
     highlightedEdges,
     isMobile,
     onNodeClick,
+    isNodeClicked,
   ]);
 
-  //reset highlighted edges and path when node is clicked
   useEffect(() => {
     if (!isNodeClicked) {
       setHighlightedEdges(new Set<string>());
@@ -673,7 +731,7 @@ const DepDiagram = ({
     if (resetRef.current) {
       resetRef.current.call(selectedNodeId);
     }
-  }, [isSidebarExpanded, width, height, selectedNodeId]);
+  }, [width, height, selectedNodeId]);
 
   const handleZoomIn = () => {
     if (svgSelectionRef.current && zoomRef.current && svgRef.current) {
@@ -692,6 +750,7 @@ const DepDiagram = ({
   const handleResetZoom = () => {
     if (svgSelectionRef.current && zoomRef.current && svgRef.current) {
       setSelectedNodeId(null);
+      setCenterNode(undefined);
       // setHighlightedPath(new Set<GraphNode>());
       // setHighlightedEdges(new Set<string>());
       const selection = d3.select(svgRef.current);
@@ -715,22 +774,25 @@ const DepDiagram = ({
     );
   };
 
+  // useEffect(() => {
+  //   manifestError.push("Please try re-uploading your manifest file.");
+  //   manifestError.push("Please try re-uploading your manifest file.");
+  // }, [manifestError]);
+
   return (
-    <div className="">
-      <div className="w-full flex flex-col items-center justify-center py-2">
+    <div className="flex flex-col items-center justify-center flex-1">
+      <div className="w-full h-full flex flex-col items-center justify-center py-2">
         {isLoading ? (
           <div
-            className="flex flex-col items-center justify-center"
+            className="flex flex-col items-center justify-center h-full"
             style={{ width: windowSize.width, height: windowSize.height / 2 }}
           >
-            <LucideLoader2 strokeWidth={3} className="animate-spin" />
-            <h5 className="text-muted-foreground mt-2">
-              Generating diagram...
-            </h5>
+            <DiagramProgress />
           </div>
         ) : (
           <div className="relative" style={{ width, height }}>
             {getNodePathBadge()}
+            <ErrorBadge errorMsgs={manifestError} isMobile={isMobile} />
             {graphData && selectedEcosystem && graphData[selectedEcosystem] ? (
               <svg
                 ref={svgRef}
@@ -744,7 +806,6 @@ const DepDiagram = ({
               <EmptyCard size={400} />
             )}
             {!isLoading &&
-              !error &&
               graphData &&
               selectedEcosystem &&
               graphData[selectedEcosystem] && (
@@ -764,4 +825,15 @@ const DepDiagram = ({
   );
 };
 
-export default DepDiagram;
+export default React.memo(DepDiagram, (prevProps, nextProps) => {
+  // Custom comparison for complex props
+  return (
+    prevProps.graphData === nextProps.graphData &&
+    prevProps.selectedEcosystem === nextProps.selectedEcosystem &&
+    prevProps.isNodeClicked === nextProps.isNodeClicked &&
+    prevProps.windowSize.width === nextProps.windowSize.width &&
+    prevProps.windowSize.height === nextProps.windowSize.height &&
+    prevProps.isDiagramExpanded === nextProps.isDiagramExpanded &&
+    prevProps.isLoading === nextProps.isLoading
+  );
+});

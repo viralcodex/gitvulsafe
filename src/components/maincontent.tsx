@@ -7,12 +7,13 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { verifyFile, verifyUrl } from "@/lib/utils";
-import { useRepoData } from "@/hooks/useRepoData";
 import { uploadFile } from "@/lib/api";
 import toast from "react-hot-toast";
+import { useRepoBranch } from "@/providers/repoBranchProvider";
 
 const MainContent = () => {
   const [url, setUrl] = useState<string>("");
+  const [debouncedUrl, setDebouncedUrl] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [newFileName, setNewFileName] = useState<string>("");
   const [uploaded, setUploaded] = useState<boolean>(false);
@@ -26,15 +27,28 @@ const MainContent = () => {
     hasMore,
     totalBranches,
     loadNextPage,
-  } = useRepoData(url);
+    setCurrentUrl,
+  } = useRepoBranch();
 
   const router = useRouter();
 
+  // Debounce URL input changes
   useEffect(() => {
-    if (url && verifyUrl(url, setBranchError)) {
+    const handler = setTimeout(() => {
+      setDebouncedUrl(url);
+    }, 750);
+    return () => clearTimeout(handler);
+  }, [url]);
+
+  // Update global provider URL when debounced URL changes
+  useEffect(() => {
+    if (debouncedUrl && verifyUrl(debouncedUrl, setBranchError)) {
       setBranchError("");
+      setCurrentUrl(debouncedUrl); // Update the global provider URL
+    } else if (!debouncedUrl) {
+      setCurrentUrl(""); // Clear the global provider URL when input is empty
     }
-  }, [setBranchError, url]);
+  }, [debouncedUrl, setBranchError, setCurrentUrl]);
 
   useEffect(() => {
     if (file) {
@@ -76,8 +90,6 @@ const MainContent = () => {
         toast.error("Please wait for the file to be uploaded.");
         return;
       }
-      // If a file is selected, redirect to the analysis page with the file using username/repo style
-      // Use "file" as username and filename as repo to match the [username]/[repo] pattern
       router.push(`/file_upload/${encodeURIComponent(newFileName)}`);
       setUploaded(true);
       return;
@@ -92,16 +104,35 @@ const MainContent = () => {
 
     const { sanitizedUsername, sanitizedRepo } = result;
 
-    if (url && !file)
+    if (url && !file) {
+      const branchParam = selectedBranch ? `?branch=${encodeURIComponent(selectedBranch)}` : '';
       router.push(
-        `/${encodeURIComponent(sanitizedUsername)}/${encodeURIComponent(sanitizedRepo)}?branch=${encodeURIComponent(
-          selectedBranch!
-        )}`
+        `/${encodeURIComponent(sanitizedUsername)}/${encodeURIComponent(sanitizedRepo)}${branchParam}`
       );
+    }
+  };
+
+  const clear = () => {
+    setFile(null);
+    setUrl("");
+    setSelectedBranch(null);
+    setBranchError("");
+    setUploaded(false);
+    setNewFileName("");
+  };
+
+  const isDisabled = () => {
+    return (
+      loadingBranches ||
+      (!url && !file) ||
+      (file !== null && !uploaded) ||
+      ((!branches ||
+      !branches.length) && (!file))
+    );
   };
 
   return (
-    <Card className="w-full max-w-3xl border-[3px] border-black bg-gray-200/50 p-4 sm:p-8">
+    <Card className="w-full max-w-3xl border-[3px] border-black bg-gray-200/50 p-4 sm:p-8 shadow-[0px_0px_10px_0px_#FFFFFF]">
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         <div className="flex flex-row gap-3 sm:flex-row sm:gap-4">
           <Input
@@ -132,7 +163,11 @@ const MainContent = () => {
           </div>
           <div className="flex flex-grow w-full flex-col items-start justify-center my-2">
             <label className="block text-md font-bold text-primary-foreground mb-2">
-              Upload a manifest file <span className="italic font-semibold">(.json, .yaml, .xml, .txt)</span> - Max 5MB
+              Upload a manifest file{" "}
+              <span className="italic font-semibold">
+                (.json, .yaml, .xml, .txt)
+              </span>{" "}
+              - Max 5MB
             </label>
             <Input
               className="flex-1 rounded-md border-[3px] border-black px-3 text-base font-bold placeholder:text-base placeholder:font-normal sm:px-4 sm:py-4 cursor-pointer"
@@ -148,21 +183,14 @@ const MainContent = () => {
             <Button
               className="cursor-pointer bg-accent text-black border-[3px] border-black p-4 px-4 text-base transition-transform hover:text-accent-foreground hover:-translate-x-0.5 hover:-translate-y-0.5 hover:transform hover:bg-primary-foreground sm:p-6 sm:px-6 sm:text-lg disabled:cursor-not-allowed"
               type="submit"
-              disabled={loadingBranches || (!url && !file) || (file !== null && !uploaded)}
+              disabled={isDisabled()}
             >
               Analyse
             </Button>
             <Button
               className="cursor-pointer bg-accent-foreground text-accent border-[3px] border-black p-4 px-4 text-base transition-transform hover:text-accent-foreground hover:-translate-x-0.5 hover:-translate-y-0.5 hover:transform hover:bg-primary-foreground sm:p-6 sm:px-6 sm:text-lg"
               type="reset"
-              onClick={() => {
-                setFile(null);
-                setUrl("");
-                setSelectedBranch(null);
-                setBranchError("");
-                setUploaded(false);
-                setNewFileName("");
-              }}
+              onClick={clear}
             >
               Clear
             </Button>
