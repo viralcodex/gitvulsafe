@@ -4,6 +4,7 @@ import { Badge } from "../ui/badge";
 import * as LucideIcons from "lucide-react";
 import { Progress } from "../ui/progress";
 import { useEffect, useState } from "react";
+import { PROGRESS_MESSAGES } from "@/constants/constants";
 
 interface DependencyAIDetailsProps {
   dependency: Dependency | undefined;
@@ -33,11 +34,15 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
   const [progress, setProgress] = useState<number>(0);
   const [finalised, setFinalised] = useState<boolean>(false);
   const [dots, setDots] = useState<string>("");
+  const [timeElapsed, setTimeElapsed] = useState<number>(0);
+  const [message, setMessage] = useState<string>("Finalizing summary");
 
   useEffect(() => {
     if (isLoading) {
       setFinalised(false);
       setProgress(0);
+      setMessage("");
+      setTimeElapsed(0);
 
       const getRandomValueInRange = (min: number, max: number) => {
         return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -89,6 +94,36 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
 
     return () => clearTimeout(interval);
   }, [dots]);
+
+  // Track time elapsed while loading
+  useEffect(() => {
+    let startTime: number;
+    let interval: NodeJS.Timeout;
+    if(progress >= 90 && !finalised)
+    {
+      startTime = Date.now();
+      interval = setInterval(() => {
+        setTimeElapsed(Date.now() - startTime);
+      }, 100);
+    }
+    return () => {
+      if(interval) clearInterval(interval);
+    }
+  }, [finalised, progress]);
+
+  useEffect(() => {
+    let count = 0;
+    let interval: NodeJS.Timeout;
+    if (timeElapsed >= 1000 && progress >= 90 && !finalised) {
+      interval = setInterval(() => {
+        setMessage(PROGRESS_MESSAGES[count % PROGRESS_MESSAGES.length]);
+        count++;
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [progress, timeElapsed, finalised]);
 
   if (
     !dependency ||
@@ -239,7 +274,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
             <span>
               {progress < 90
                 ? "Generating AI Summary"
-                : "Finalizing AI Summary"}
+                : (message || "Finalizing summary")}
             </span>
             <span className="inline-block w-4 text-left">{dots}</span>
           </div>

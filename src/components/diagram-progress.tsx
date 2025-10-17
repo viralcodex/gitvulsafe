@@ -39,7 +39,7 @@ const DiagramProgress = () => {
     }, [dots]);
 
   return (
-    <div className="space-y-2 w-[25%]">
+    <div className="space-y-2 sm:w-[25%] w-[75%]">
       <Progress value={progress} className="w-full border-1 h-4" />
       <div className="text-sm text-muted-foreground px-1 xl:text-lg">
         <div className="flex flex-row items-center text-sm">

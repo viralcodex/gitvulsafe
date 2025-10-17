@@ -17,7 +17,7 @@ const EmptyCard = (props: EmptyCardProps) => {
         height={size}
       />
       <h3 className="text-lg text-muted-foreground w-full">
-        This space is emptier than my coffee cup on Monday morning...
+        This space is emptier than my coffee cup on a Monday morning...
       </h3>
     </div>
   );
