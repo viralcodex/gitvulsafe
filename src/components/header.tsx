@@ -3,7 +3,7 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { AiDialog } from "./ai-dialog";
 import { GithubDialog } from "./github-dialog";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/useMobile";
 import { KeyRound, Menu, Sparkle, X } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
 
@@ -20,8 +20,8 @@ const Header = () => {
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [isMobile]);
 
   return (
@@ -37,9 +37,15 @@ const Header = () => {
           {isMobile ? (
             <div className="relative">
               {isMenuOpen ? (
-                <X onClick={() => setIsMenuOpen(false)} className="cursor-pointer text-white"/>
+                <X
+                  onClick={() => setIsMenuOpen(false)}
+                  className="cursor-pointer text-white"
+                />
               ) : (
-                <Menu onClick={() => setIsMenuOpen(true)} className="cursor-pointer text-white"/>
+                <Menu
+                  onClick={() => setIsMenuOpen(true)}
+                  className="cursor-pointer text-white"
+                />
               )}
             </div>
           ) : (

@@ -3,14 +3,10 @@
 import { useGraph } from "@/hooks/useGraph";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import TopHeaderGithub from "../../../components/topheadergithub";
+import TopHeaderGithub from "../../../components/top-header-github";
 import DepDiagram from "@/components/dependency-diagram";
-import {
-  GraphNode,
-  GroupedDependencies,
-  SSEMessage,
-} from "@/constants/constants";
-import TopHeaderFile from "@/components/topheaderfile";
+import { GraphNode, GroupedDependencies, SSEMessage } from "@/constants/model";
+import TopHeaderFile from "@/components/top-header-file";
 import DependencyDetailsCard from "@/components/dependency-sidebar/dependency-sidebar";
 import {
   downloadFixPlanPDF,
@@ -20,52 +16,40 @@ import {
 } from "@/lib/utils";
 import { getFixPlanSSE, uploadFile } from "@/lib/api";
 import toast from "react-hot-toast";
-import { useRepoData } from "@/hooks/useRepoData";
 import Image from "next/image";
 import { Dropdown } from "@/components/ui/dropdown";
 import FixPlanCard from "@/components/fix-plan-card";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/useMobile";
+import { useRepoBranch } from "@/providers/repoBranchProvider";
 
 const Page = () => {
-  // const branch = useSearchParams().get("branch") || "";
-  // const username = useSearchParams().get("username") || "";
-  // const repo = useSearchParams().get("repo") || "";
-  // const file = useSearchParams().get("file") || "";
-  const username = useParams<{ username: string; repo: string }>().username;
-  const repo = useParams<{ username: string; repo: string }>().repo;
+  const params = useParams<{ username: string; repo: string }>();
+  const username = params.username;
+  const repo = params.repo;
   const branch = useSearchParams().get("branch") || "";
+  const [inputUrl, setInputUrl] = useState<string>("");
   const file = username?.includes("file_") ? decodeURIComponent(repo) : "";
-
   const [error, setError] = useState<string>("");
+  const [manifestError, setManifestError] = useState<string[]>([]);
+  const [fixPlanError, setFixPlanError] = useState<Record<string, string>>({});
   const [isNodeClicked, setIsNodeClicked] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(true);
   const [isDiagramExpanded, setIsDiagramExpanded] = useState<boolean>(false);
   const [fileHeaderOpen, setFileHeaderOpen] = useState<boolean>(!!file);
   const [uploaded, setUploaded] = useState<boolean>(false);
   const [inputFile, setInputFile] = useState<File | null>(null);
   const [newFileName, setNewFileName] = useState<string>("");
-  const [inputUrl, setInputUrl] = useState<string>("");
-  const [debouncedUrl, setDebouncedUrl] = useState<string>("");
   const [isFixPlanLoading, setIsFixPlanLoading] = useState<boolean>(false);
   const [fixPlan, setFixPlan] = useState<Record<string, string>>({});
-  const [fixPlanError, setFixPlanError] = useState<Record<string, string>>({});
   const [isFixPlanDialogOpen, setFixPlanDialogOpen] = useState<boolean>(false);
-  const [fixPlanComplete, setFixPlanComplete] = useState<boolean>(false);
+  const [isFixPlanComplete, setFixPlanComplete] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-
   const fixPlanRef = useRef<HTMLDivElement>(null);
-
+  
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const prevBranchRef = useRef<string>("");
 
   const isMobile = useIsMobile();
-
-  const repoUrl = useMemo(() => {
-    if (!debouncedUrl) return null;
-    const result = verifyUrl(debouncedUrl, setError);
-    if (!result) return null;
-    return debouncedUrl;
-  }, [debouncedUrl]);
 
   const {
     dependencies,
@@ -76,7 +60,15 @@ const Page = () => {
     setManifestData,
     loading,
     setLoading,
-  } = useGraph(refreshTrigger, setError, username, repo, branch, file);
+  } = useGraph(
+    refreshTrigger,
+    setError,
+    setManifestError,
+    username,
+    repo,
+    branch,
+    file
+  );
 
   const {
     branches,
@@ -84,12 +76,22 @@ const Page = () => {
     loadingBranches,
     branchError,
     setSelectedBranch,
-    setBranches,
     setBranchError,
     hasMore,
     totalBranches,
     loadNextPage,
-  } = useRepoData(repoUrl);
+    setCurrentUrl,
+  } = useRepoBranch();
+
+  // Initialize URL from route parameters when route changes
+  useEffect(() => {
+    if (username && repo && !username.includes("file_upload")) {
+      const githubUrl = `https://github.com/${username}/${repo}`;
+      setInputUrl(githubUrl);
+      setCurrentUrl(githubUrl);
+    }
+  }, [username, repo, setCurrentUrl]); // This will run when route parameters change
+
 
   const getViewportWidth = () =>
     typeof document !== "undefined"
@@ -125,25 +127,20 @@ const Page = () => {
     return keys.length > 0 ? keys : [];
   }, [graphData]);
 
+  // Branch sync: handle both URL parameter and default branch selection
   useEffect(() => {
-    if (repoUrl !== null) {
-      const currentRepoFromParams =
-        !username.includes("file_upload") && username && repo
-          ? `https://github.com/${username}/${repo}`
-          : null;
-      if (repoUrl !== currentRepoFromParams) {
-        setSelectedBranch(null);
-        setBranches([]);
+    if (branches.length > 0) {
+      if (branch && branches.includes(branch)) {
+        if (prevBranchRef.current !== branch) {
+          setSelectedBranch(branch);
+          prevBranchRef.current = branch;
+        }
+      } else if (!selectedBranch) {
+        setSelectedBranch(branches[0]);
+        prevBranchRef.current = branches[0];
       }
     }
-  }, [repoUrl, username, repo, setSelectedBranch, setBranches]);
-
-  // Simple branch sync: only update dropdown when URL branch actually changes
-  useEffect(() => {
-    if (branch && branches.length > 0 && branches.includes(branch)) {
-      setSelectedBranch(branch);
-    }
-  }, [branch, branches, setSelectedBranch]);
+  }, [branch, branches, selectedBranch, setSelectedBranch]);
 
   // Handle file header state based on the file prop
   useEffect(() => {
@@ -152,28 +149,16 @@ const Page = () => {
       setInputFile(null);
       setUploaded(false);
       setNewFileName(file);
-      setInputUrl("");
     } else {
       setFileHeaderOpen(false);
     }
-  }, [file, setFileHeaderOpen]);
-
-  useEffect(() => {
-    if (dependencies && graphData && Object.keys(dependencies).length > 0) {
-      setLoading(false);
-    }
-  }, [dependencies, graphData, setLoading]);
+  }, [file, setFileHeaderOpen, setInputUrl]);
 
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       setWindowSize({ width: getViewportWidth(), height: window.innerHeight });
-      // setIsNodeClicked(false);
-      // setSelectedNode(null);
-      // setIsSidebarExpanded(false);
-      // setIsMobile(getViewportWidth() < 640);
     };
-    console.log("Window size changed:");
     window.addEventListener("resize", handleResize);
     handleResize();
     return () => window.removeEventListener("resize", handleResize);
@@ -184,14 +169,13 @@ const Page = () => {
     const handleNavigation = () => {
       setIsNodeClicked(false);
       setSelectedNode(null);
-      // setIsSidebarExpanded(false);
       setIsDiagramExpanded(false);
       setFileHeaderOpen(false);
       setInputFile(null);
       setUploaded(false);
     };
 
-    console.log("Page changed");
+    // console.log("Page changed");
     window.addEventListener("popstate", handleNavigation);
     return () => window.removeEventListener("popstate", handleNavigation);
   }, []);
@@ -200,13 +184,10 @@ const Page = () => {
   useEffect(() => {
     setIsNodeClicked(false);
     setSelectedNode(null);
-    // setIsSidebarExpanded(false);
     setIsDiagramExpanded(false);
   }, [username, repo, branch, file]);
 
   const onMessage = useCallback((message: SSEMessage) => {
-    console.log("SSE Message:", message);
-
     if (
       message &&
       message.dependencyName &&
@@ -246,13 +227,13 @@ const Page = () => {
     }
 
     if (dependencyKey) {
-      console.log("Error for dependency:", dependencyKey, error);
+      // console.log("Error for dependency:", dependencyKey, error);
       setFixPlanError((prev) => ({
         ...prev,
         [dependencyKey]: error,
       }));
     } else {
-      console.log("General error (no specific dependency):", error);
+      // console.log("General error (no specific dependency):", error);
     }
   }, []);
 
@@ -260,11 +241,15 @@ const Page = () => {
     toast.success("Fix plan generation completed!");
     setFixPlanComplete(true);
     setIsFixPlanLoading(false);
-    console.log(fixPlan);
-  }, [fixPlan]);
+    // console.log(fixPlan);
+  }, []);
 
   const generateFixPlan = useCallback(
     async (regenerateFixPlan: boolean = false) => {
+      if (!graphData || Object.keys(graphData).length === 0) {
+        setError("No graph data available to generate fix plan.");
+        return;
+      }
       setFixPlanDialogOpen(true);
       if (isFixPlanLoading) return; // Prevent multiple simultaneous calls
       setFixPlanError({});
@@ -297,6 +282,7 @@ const Page = () => {
       }
     },
     [
+      graphData,
       isFixPlanLoading,
       fixPlan,
       username,
@@ -318,7 +304,6 @@ const Page = () => {
       }
       setIsNodeClicked(false);
       setSelectedNode(null);
-      // setIsSidebarExpanded(false);
     },
     [selectedNode]
   );
@@ -326,7 +311,6 @@ const Page = () => {
   const handleDetailsCardClose = () => {
     setIsNodeClicked(false);
     setSelectedNode(null);
-    // setIsSidebarExpanded(false);
   };
 
   const handleSetDependencies = (deps: GroupedDependencies) => {
@@ -341,22 +325,6 @@ const Page = () => {
     if (error) toast.error(error);
   }, [error]);
 
-  //handle github url
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedUrl(inputUrl);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [inputUrl]);
-
-  // Update inputUrl when username, repo, or branch changes
-  useEffect(() => {
-    if (username && repo && !username.includes("file_upload")) {
-      const url = `https://github.com/${username}/${repo}`;
-      setInputUrl(url);
-      setDebouncedUrl(url);
-    }
-  }, [branch, repo, username]);
 
   // Handle file upload
   useEffect(() => {
@@ -381,6 +349,7 @@ const Page = () => {
             // console.error("Error uploading file:", err);
             setError("Failed to upload file. Please try again later. " + err);
             setUploaded(false);
+            toast.error("Failed to upload file. Please try again later.");
           });
       }
     }
@@ -396,8 +365,16 @@ const Page = () => {
     setBranchError("");
   };
 
+  // Debounce URL input changes
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if(inputUrl && verifyUrl(inputUrl, setBranchError))
+        setCurrentUrl(inputUrl);
+    }, 1000);
+    return () => clearTimeout(handler);
+  }, [inputUrl, setBranchError, setCurrentUrl]);
+
   const handleRefresh = () => {
-    console.log("Refreshing graph data...");
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -406,17 +383,16 @@ const Page = () => {
     setDependencies({});
     setSelectedNode(null);
     setIsNodeClicked(false);
-    setIsSidebarExpanded(false);
     setIsDiagramExpanded(false);
-    setLoading(false);
     svgRef.current = null;
   };
 
   // console.log("File Header:", newFileName, file, inputFile, uploaded);
 
+  // console.log("LOADING:", inputUrl, currentUrl);
   return (
     <div className="flex flex-col h-full">
-      {isFixPlanDialogOpen ? (
+      {isFixPlanDialogOpen && (
         <FixPlanCard
           onClose={() => setFixPlanDialogOpen(false)}
           onDownload={async () => {
@@ -431,15 +407,13 @@ const Page = () => {
           fixPlanError={fixPlanError}
           setFixPlanError={setFixPlanError}
           isFixPlanLoading={isFixPlanLoading}
-          fixPlanComplete={fixPlanComplete}
+          fixPlanComplete={isFixPlanComplete}
           setFixPlanComplete={setFixPlanComplete}
         />
-      ) : (
-        <></>
       )}
       <div
         className={
-          selectedNode && !isMobile
+          isNodeClicked && !isMobile
             ? "w-[65%] flex flex-col items-center justify-center"
             : "flex-1"
         }
@@ -465,7 +439,6 @@ const Page = () => {
             setError={setError}
             setIsFileHeaderOpen={setFileHeaderOpen}
             setIsNodeClicked={setIsNodeClicked}
-            setIsSidebarExpanded={setIsSidebarExpanded}
             setIsDiagramExpanded={setIsDiagramExpanded}
             setLoading={setLoading}
             setInputFile={setInputFile}
@@ -490,7 +463,6 @@ const Page = () => {
             setGraphData={setGraphData}
             setIsFileHeaderOpen={setFileHeaderOpen}
             setIsNodeClicked={setIsNodeClicked}
-            setIsSidebarExpanded={setIsSidebarExpanded}
             setIsDiagramExpanded={setIsDiagramExpanded}
             resetGraphSvg={resetGraph}
             setSelectedBranch={setSelectedBranch}
@@ -540,7 +512,6 @@ const Page = () => {
           graphData={graphData}
           selectedEcosystem={selectedEcosystem}
           isLoading={loading}
-          isSidebarExpanded={isSidebarExpanded}
           isMobile={isMobile}
           windowSize={windowSize}
           isDiagramExpanded={isDiagramExpanded}
@@ -553,6 +524,7 @@ const Page = () => {
           setIsFixPlanLoading={setIsFixPlanLoading}
           generateFixPlan={generateFixPlan}
           error={error}
+          manifestError={manifestError}
         />
       </div>
       {selectedNode && isNodeClicked && (
@@ -562,7 +534,6 @@ const Page = () => {
           isOpen={isNodeClicked}
           isMobile={isMobile}
           onClose={handleDetailsCardClose}
-          setIsSidebarExpanded={setIsSidebarExpanded}
         />
       )}
     </div>

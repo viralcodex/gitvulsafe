@@ -1,8 +1,8 @@
 "use client";
-import { Vulnerability } from "@/constants/constants";
+import { Vulnerability } from "@/constants/model";
 import { getInlineAiResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useTextSelection } from "@/providers/text-selection-provider";
+import { useTextSelection } from "@/providers/textSelectionProvider";
 import { LoaderCircle } from "lucide-react";
 import Image from "next/image";
 import React, { useState, useRef, useEffect } from "react";

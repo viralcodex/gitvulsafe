@@ -3,7 +3,7 @@ import {
   ShowMoreDescProps,
   ShowMoreRefsProps,
   Vulnerability,
-} from "@/constants/constants";
+} from "@/constants/model";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import removeMarkdown from "remove-markdown";

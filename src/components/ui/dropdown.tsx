@@ -71,16 +71,6 @@ export function Dropdown({
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    // console.log("Scroll event:", {
-    //   scrollTop,
-    //   scrollHeight,
-    //   clientHeight,
-    //   distanceFromBottom,
-    //   hasMore,
-    //   loadingBranches,
-    //   branchCount: branches.length,
-    // });
-
     // Trigger pagination when user is near the bottom (within 100px)
     if (distanceFromBottom <= 500 && hasMore && !loadingBranches) {
       console.log("Triggering loadNextPage");
@@ -137,7 +127,7 @@ export function Dropdown({
                       onSelectBranch(value);
                       setOpen(false);
                     }}
-                    className="whitespace-normal break-all"
+                    className="whitespace-normal break-all cursor-pointer"
                   >
                     {branch}
                     <Check

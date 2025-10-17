@@ -35,7 +35,7 @@ export function GithubDialog({ isOpen, onClose, onSubmit }: GithubDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="border-[2px] border-accent bg-background p-6 sm:max-w-md">
+      <DialogContent className="border-[2px] border-accent bg-background shadow-[1px_1px_10px_2px_#000000] p-6 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary-foreground">
             Enter GitHub Personal Access Token
