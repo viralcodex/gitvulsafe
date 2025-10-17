@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
-import { Dependency, GraphNode, Vulnerability } from "@/constants/constants";
+import { Dependency, GraphNode, Vulnerability } from "@/constants/model";
 import removeMarkdown from "remove-markdown";
-import {
-  Check,
-  Copy,
-  Download,
-  RefreshCcw,
-  X,
-} from "lucide-react";
+import { Check, Copy, Download, RefreshCcw, X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Badge } from "../ui/badge";
 import { cn, getSeverityConfig } from "@/lib/utils";
@@ -18,7 +12,7 @@ import DependencyDetails from "@/components/dependency-sidebar/dependency-detail
 import DependencyAIDetails from "./dependency-ai-details";
 import { getAiVulnerabilitiesSummary } from "@/lib/api";
 import Image from "next/image";
-import { useTextSelection } from "@/providers/text-selection-provider";
+import { useTextSelection } from "@/providers/textSelectionProvider";
 
 interface DependencyDetailsProps {
   node: GraphNode;
@@ -28,17 +22,11 @@ interface DependencyDetailsProps {
   isDiagramExpanded?: boolean;
   onClose?: () => void;
   setIsMobile?: (isMobile: boolean) => void;
-  setIsSidebarExpanded: (expanded: boolean) => void;
   setIsDiagramExpanded?: (expanded: boolean) => void;
 }
 
 const DependencyDetailsCard = (props: DependencyDetailsProps) => {
-  const {
-    node,
-    dependencies,
-    onClose,
-    isMobile,
-  } = props;
+  const { node, dependencies, onClose, isMobile } = props;
 
   const { setSelectedDependency } = useTextSelection();
   const [isCopied, setIsCopied] = useState<boolean>(false);
@@ -176,6 +164,10 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     try {
       const response = await getAiVulnerabilitiesSummary(vulnerabilities);
       setSummary(response);
+      //remove old cache and set new cache
+      sessionStorage.removeItem(
+        `ai-summary-${allDetails.name}@${allDetails.version}`
+      );
       sessionStorage.setItem(
         `ai-summary-${allDetails.name}@${allDetails.version}`,
         response
@@ -225,12 +217,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
   const getSeverityBadge = (score?: string) => {
     const config = getSeverityConfig(score);
     return (
-      <Badge
-        className={cn(
-          isMobile ? "text-sm" : "text-xs",
-          config.className
-        )}
-      >
+      <Badge className={cn(isMobile ? "text-sm" : "text-xs", config.className)}>
         {config.text}
       </Badge>
     );
@@ -244,30 +231,16 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     <div
       className={cn(
         "absolute right-0 flex flex-col",
-        // isSidebarExpanded
-          // ? 
-          isMobile
-            ? "w-full p-1 h-[calc(100vh-4rem)] pr-1"
-            : "w-[35%] p-1 h-[calc(100vh-4rem)] pr-1",
-          // : isMobile
-          //   ? "w-full p-1 top-1/3 pr-1"
-          //   : isDiagramExpanded
-          //     ? "top-1/4"
-          //     : "top-1/3",
+        isMobile
+          ? "w-full p-1 h-[calc(100vh-4rem)] pr-1"
+          : "w-[35%] p-1 h-[calc(100vh-4rem)] pr-1",
         "z-10 p-1 pr-1"
       )}
     >
       <Card
         className={cn(
           "bg-background border-none text-accent p-0 gap-0 relative rounded-lg",
-          // isSidebarExpanded
-          //   ? 
-            isMobile
-              ? "h-[92vh]"
-              : "h-[100%]"
-            // : isMobile
-            //   ? "h-[66vh]"
-            //   : "w-[400px] h-[calc(100vh-17rem)]"
+          isMobile ? "h-[92vh]" : "h-[100%]"
         )}
       >
         <CardHeader
@@ -296,33 +269,6 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                 onClick={downloadDetails}
                 color="white"
               />
-              {/* {isSidebarExpanded ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Minimize
-                      className="cursor-pointer"
-                      onClick={() => {
-                        setIsSidebarExpanded(false);
-                      }}
-                      color="white"
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>Collapse</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Maximize
-                      className="cursor-pointer"
-                      onClick={() => {
-                        setIsSidebarExpanded(true);
-                      }}
-                      color="white"
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>Expand</TooltipContent>
-                </Tooltip>
-              )} */}
               <X className="cursor-pointer" onClick={onClose} color="white" />
             </div>
           </div>
@@ -372,7 +318,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                 </div>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto scrollbar-background-bg scrollbar-background-thumb">
+            <div className="flex-1 flex flex-col overflow-y-auto scrollbar-background-bg scrollbar-background-thumb">
               <TabsContent value="Vuln_details" className="mt-0">
                 <DependencyDetails
                   processedVulns={processedVulns}

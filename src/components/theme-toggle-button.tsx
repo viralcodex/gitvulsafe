@@ -1,5 +1,5 @@
 import React from "react";
-import { useTheme } from "@/providers/theme-provider";
+import { useTheme } from "@/providers/themeProvider";
 import { FaMoon, FaSun } from "react-icons/fa";
 import {
   Tooltip,

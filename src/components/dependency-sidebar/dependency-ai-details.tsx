@@ -1,7 +1,9 @@
-import { Dependency } from "@/constants/constants";
+import { Dependency } from "@/constants/model";
 import { cn, getRemediationPriorityConfig } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 import * as LucideIcons from "lucide-react";
+import { Progress } from "../ui/progress";
+import { useEffect, useState } from "react";
 
 interface DependencyAIDetailsProps {
   dependency: Dependency | undefined;
@@ -28,6 +30,66 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
     getSeverityBadge,
   } = props;
 
+  const [progress, setProgress] = useState<number>(0);
+  const [finalised, setFinalised] = useState<boolean>(false);
+  const [dots, setDots] = useState<string>("");
+
+  useEffect(() => {
+    if (isLoading) {
+      setFinalised(false);
+      setProgress(0);
+
+      const getRandomValueInRange = (min: number, max: number) => {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      };
+
+      const updateProgress = () => {
+        setProgress((prevProgress) => {
+          if (prevProgress <= 30)
+            return Math.min(prevProgress + getRandomValueInRange(15, 20), 90);
+          if (prevProgress <= 60)
+            return Math.min(prevProgress + getRandomValueInRange(5, 10), 90);
+          if (prevProgress < 90)
+            return Math.min(prevProgress + getRandomValueInRange(3, 7), 90);
+          return prevProgress;
+        });
+      };
+
+      const interval = setInterval(
+        updateProgress,
+        getRandomValueInRange(1000, 2000)
+      );
+
+      return () => {
+        clearInterval(interval);
+      };
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (summary && !isLoading) {
+      setProgress(100);
+      const timer = setTimeout(() => {
+        setFinalised(true);
+      }, 1000);
+
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [summary, isLoading]);
+
+  useEffect(() => {
+    const interval = setTimeout(() => {
+      setDots((prev) => {
+        const newDots = prev.length >= 3 ? "" : prev + ".";
+        return newDots;
+      });
+    }, 750);
+
+    return () => clearTimeout(interval);
+  }, [dots]);
+
   if (
     !dependency ||
     !dependency.vulnerabilities ||
@@ -35,8 +97,6 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
   ) {
     return <div className="pt-12 px-4">No dependency details available</div>;
   }
-
-  console.log("AI Summary:", summary);
 
   const parsedSummary = summary ? JSON.parse(summary) : null;
 
@@ -55,12 +115,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
   const getRemediationPriorityBadge = (priority: string) => {
     const config = getRemediationPriorityConfig(priority);
     return (
-      <Badge
-        className={cn(
-          isMobile ? "text-sm" : "text-xs",
-          config.className
-        )}
-      >
+      <Badge className={cn(isMobile ? "text-sm" : "text-xs", config.className)}>
         {getIconComponent(config.icon)}
         {config.text}
       </Badge>
@@ -176,10 +231,18 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
   };
 
   return (
-    <div className="px-4">
-      {isLoading ? (
-        <div className="flex items-center justify-center h-full w-full">
-          Loading AI summary...
+    <div className="px-4 h-full w-full">
+      {!finalised ? (
+        <div className="flex flex-col items-center justify-center h-full">
+          <Progress value={progress} className="my-2 max-w-[75%]"/>
+          <div className="flex flex-row items-center text-sm">
+            <span>
+              {progress < 90
+                ? "Generating AI Summary"
+                : "Finalizing AI Summary"}
+            </span>
+            <span className="inline-block w-4 text-left">{dots}</span>
+          </div>
         </div>
       ) : error ? (
         <div className="text-red-500 text-center">{error}</div>

@@ -17,3 +17,4 @@ out/
 .eslintcache
 *.log
 /backend/drizzle
+.VSCODECounter

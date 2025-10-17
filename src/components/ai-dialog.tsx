@@ -35,7 +35,7 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="border-[3px] border-black bg-background p-6 shadow-[8px_8px_0_0_#000000] sm:max-w-md">
+      <DialogContent className="border-[3px] border-accent bg-background p-6 shadow-[1px_1px_10px_2px_#000000] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary-foreground">
             Enter Gemini API Key
@@ -64,8 +64,8 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
               <p>
                 All your API keys are stored locally in your browser and not
                 used by me in any manner. If you still don&apos;t feel like
-                sharing your key, You can also self-host this app by following
-                the instructions here...{" "}
+                sharing your key, you can also <b>self-host</b> this app by
+                following the instructions here...{" "}
                 <Link
                   href="https://github.com/viralcodex/gitvulsafe#readme"
                   className="underline text-primary-foreground dark:text-[hsl(var(--text-color-link))] transition-colors duration-200 hover:text-muted-foreground"

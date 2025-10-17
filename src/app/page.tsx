@@ -24,7 +24,7 @@ export default function Home() {
         <Image
           priority
           src="/file.svg"
-          alt="Decorative file icon"
+          alt="Skull Dotted Image"
           width={300}
           height={300}
           style={{ objectFit: "contain" }}
@@ -34,8 +34,9 @@ export default function Home() {
         <Image
           priority
           src="/file.svg"
-          alt="Skull dotted image"
-          fill
+          alt="Skull dotted Image"
+          width={300}
+          height={300}
           style={{ objectFit: "contain" }}
         />
       </div>

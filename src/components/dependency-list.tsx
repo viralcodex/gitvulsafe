@@ -1,14 +1,26 @@
-import {useEffect, useState, useRef} from "react"
-import {GitGraphIcon, LucideLoader2, LucideMinus, LucidePlus } from "lucide-react"
+import { useEffect, useState, useRef } from "react";
+import {
+  GitGraphIcon,
+  LucideLoader2,
+  LucideMinus,
+  LucidePlus,
+} from "lucide-react";
 
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
-import { Dependency } from "@/constants/constants"
+} from "@/components/ui/sidebar";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { Dependency } from "@/constants/model";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   dependencies: { [technology: string]: Dependency[] };
@@ -16,9 +28,11 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   error?: string;
 }
 
-
-
-export function AppSidebar({ dependencies, isLoading, ...props }: AppSidebarProps) {
+export function AppSidebar({
+  dependencies,
+  isLoading,
+  ...props
+}: AppSidebarProps) {
   const [openGroups, setOpenGroups] = useState<{ [tech: string]: boolean }>({});
   const [search, setSearch] = useState("");
   const prevOpenGroups = useRef<{ [tech: string]: boolean }>({});

@@ -9,65 +9,73 @@ import {
   GraphData,
   GroupedDependencies,
   ManifestFileContentsApiResponse,
-  manifestFiles,
   Relation,
   TransitiveDependency,
   Vulnerability,
-} from "@/constants/constants";
+} from "@/constants/model";
+import { manifestFiles } from "@/constants/constants";
 
 //and then based on the results we will create a graph
 export const useGraph = (
   refreshTrigger: number,
   setError: (error: string) => void,
+  setManifestError: (error: string[]) => void,
   username?: string,
   repo?: string,
   branch?: string,
-  file?: string,
+  file?: string
 ) => {
   const [dependencies, setDependencies] = useState<GroupedDependencies>({});
-  const [manifestData, setManifestData] = useState<ManifestFileContentsApiResponse | null>(null);
+  const [manifestData, setManifestData] =
+    useState<ManifestFileContentsApiResponse | null>(null);
   const [graphData, setGraphData] = useState<EcosystemGraphMap>({});
   const [loading, setLoading] = useState(true);
 
   const fetchDependencies = useCallback(
-    async (username?: string, repo?: string, branch?: string, file?: string) => {
+    async (
+      username?: string,
+      repo?: string,
+      branch?: string,
+      file?: string
+    ) => {
       try {
         const manifestData: ManifestFileContentsApiResponse =
           await analyseDependencies(username!, repo!, branch!, file!);
-        console.log("Manifest Data:", manifestData, Object.values(manifestData).flat().length);
-        if(manifestData && manifestData.error)
-        {
-          setError(manifestData.error);
+        // console.log(
+        //   "Manifest Data:",
+        //   manifestData,
+        //   Object.values(manifestData.dependencies).flat().length
+        // );
+        if (manifestData && manifestData.error) {
+          setManifestError(manifestData.error);
           setLoading(false);
-          return;
+          // return;
         }
         if (!manifestData || !manifestData.dependencies) {
-          
           setLoading(false);
           return;
         }
         setManifestData(manifestData);
         //group the dependencies by technology
-        const groupedDependencies = (Object.entries(manifestData.dependencies).flatMap(([filePath, deps]) =>{
-          return deps.map((dep) => ({
-            ...dep,
-            filePath,
-          }));
-        })).reduce(
-          (acc: GroupedDependencies, dep: Dependency) => {
+        const groupedDependencies = Object.entries(manifestData.dependencies)
+          .flatMap(([filePath, deps]) => {
+            return deps.map((dep) => ({
+              ...dep,
+              filePath,
+            }));
+          })
+          .reduce((acc: GroupedDependencies, dep: Dependency) => {
             if (!acc[dep.ecosystem]) {
               acc[dep.ecosystem] = [];
             }
             acc[dep.ecosystem].push(dep);
             return acc;
-          },
-          {}
-        );
-        console.log("Grouped Dependencies:", groupedDependencies);
+          }, {});
+        // console.log("Grouped Dependencies:", groupedDependencies);
         setDependencies(groupedDependencies);
         setLoading(false);
-      } catch (err) {
-        console.error("Error fetching manifest file contents:", err);
+      } catch {
+        // console.error("Error fetching manifest file contents:", err);
         setError(
           "Failed to fetch manifest file contents. Please try again later."
         );
@@ -75,7 +83,7 @@ export const useGraph = (
         return;
       }
     },
-    [setDependencies, setLoading, setError]
+    [setManifestError, setError]
   );
 
   const createGraphData = useCallback(
@@ -92,7 +100,7 @@ export const useGraph = (
           id: repoNodeId,
           label: manifestFiles[ecosystem].file || ecosystem,
           icon: manifestFiles[ecosystem].icon || undefined,
-          type: Relation.CENTER
+          type: Relation.CENTER,
         });
 
         const addedNodeIds = new Set<string>();
@@ -170,12 +178,16 @@ export const useGraph = (
           }
           // if (transDeps && Array.isArray(transDeps.nodes)) {
           // Optionally, add edges between transitive nodes if present in backend
-          if (transDeps.edges && Array.isArray(transDeps.edges) && transDeps.edges.length > 0) {
+          if (
+            transDeps.edges &&
+            Array.isArray(transDeps.edges) &&
+            transDeps.edges.length > 0
+          ) {
             transDeps.edges.forEach((edge) => {
               const nodesArr = transDeps.nodes || [];
               const sourceNode = nodesArr[edge.source];
               const targetNode = nodesArr[edge.target];
-              
+
               // console.log("Transitive Edge:", sourceNode, targetNode);
               // Ensure both nodes exist and have vulnerabilities
               if (!sourceNode || !targetNode) return;
@@ -188,26 +200,29 @@ export const useGraph = (
               //   !targetNode.vulnerabilities ||
               //   targetNode.vulnerabilities.length === 0
               // )
-                // return;
+              // return;
               const sourceId = `${sourceNode.name}@${sourceNode.version}`;
               const targetId = `${targetNode.name}@${targetNode.version}`;
               edges.push({
                 source: sourceId,
                 target: targetId,
-                type: Relation.TRANSITIVE
+                type: Relation.TRANSITIVE,
               });
             });
-          } 
-          else if (transDeps.nodes && transDeps.nodes.length > 0) {
+          } else if (transDeps.nodes && transDeps.nodes.length > 0) {
             // If no edges, attach each transitive node to its parent dependency node
             transDeps.nodes.forEach((transNode) => {
-              if (!transNode.vulnerabilities || transNode.vulnerabilities.length === 0) return;
+              if (
+                !transNode.vulnerabilities ||
+                transNode.vulnerabilities.length === 0
+              )
+                return;
               if (transNode.dependencyType === Relation.SELF) return;
               const transNodeId = `${transNode.name}@${transNode.version}`;
               edges.push({
                 source: depNodeId,
                 target: transNodeId,
-                type: Relation.TRANSITIVE 
+                type: Relation.TRANSITIVE,
               });
             });
           }
@@ -216,7 +231,7 @@ export const useGraph = (
         graphData[ecosystem] = { nodes, edges };
       });
 
-      console.log("Graph Data:", graphData);
+      // console.log("Graph Data:", graphData);
       return graphData;
     },
     [username, repo]
@@ -232,16 +247,16 @@ export const useGraph = (
     const maxCvss = Math.max(...scores, 0);
     return maxCvss;
   };
-  
+
   useEffect(() => {
     setLoading(true);
-    console.log("Fetching dependencies for:", {
-      username,
-      repo,
-      branch,
-      file,
-      refreshTrigger,
-    });
+    // console.log("Fetching dependencies for:", {
+    //   username,
+    //   repo,
+    //   branch,
+    //   file,
+    //   refreshTrigger,
+    // });
     fetchDependencies(username, repo, branch, file);
   }, [branch, file, repo, username, refreshTrigger, fetchDependencies]);
 
