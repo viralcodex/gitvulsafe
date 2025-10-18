@@ -237,7 +237,7 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
         isMobile
           ? "w-full p-1 h-[calc(100vh-4rem)] pr-1"
           : "w-[35%] p-1 h-[calc(100vh-4rem)] pr-1",
-        "z-10 p-1 pr-1"
+        "z-105 p-1 pr-1"
       )}
     >
       <Card
