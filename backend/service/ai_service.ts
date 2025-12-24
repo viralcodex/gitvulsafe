@@ -63,7 +63,7 @@ class AiService {
     }
 
     const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-lite',
       contents: `${prompts.INLINE_AI_RESPONSE.template.replace('{{selectedText}}', selectedText)}\n\nContext: ${prompts.INLINE_AI_RESPONSE.context.replace('{{context}}', context)}`,
       config: {
         thinkingConfig: {

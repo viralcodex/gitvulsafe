@@ -1,0 +1,71 @@
+{
+  "type": "object",
+  "properties": {
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "conflicts_summary": { "type": "string" },
+        "critical_conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dependency": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "version_conflicts": {
+          "type": "array", 
+          "items": {
+            "type": "object",
+            "properties": {
+              "package": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "breaking_changes": { "type": "string" }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "properties": {
+        "approach": { "type": "string" },
+        "primary_strategy": { "type": "string" },
+        "backup_strategies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "testing_plan": { "type": "string" },
+        "rollback_procedures": { "type": "string" },
+        "estimated_duration": { "type": "string" },
+        "resource_requirements": { "type": "string" }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "properties": {
+        "risk_mitigation": { "type": "string" },
+        "success_criteria": { "type": "string" },
+        "monitoring_strategy": { "type": "string" }
+      }
+    }
+  },
+  "required": ["analysis", "resolution", "implementation", "governance"]
+}

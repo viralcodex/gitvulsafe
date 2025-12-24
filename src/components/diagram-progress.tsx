@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Progress } from "./ui/progress";
 import { progressSSE } from "@/lib/api";
 import toast from "react-hot-toast";
+import { progressSteps } from "@/constants/constants";
 
 const DiagramProgress = () => {
   const [progress, setProgress] = useState(0);
@@ -11,8 +12,8 @@ const DiagramProgress = () => {
   useEffect(() => {
     const eventSource = progressSSE(
       (step: string, prg: number) => {
-        setCurrentStep(step);
         setProgress(Number(prg.toFixed(1)));
+        setCurrentStep(step);
       },
       () => {
       },
@@ -34,20 +35,32 @@ const DiagramProgress = () => {
         const newDots = prev.length >= 3 ? "" : prev + ".";
         return newDots;
       });
-    }, 750)
-    return () => clearTimeout(interval)
-    }, [dots]);
+    }, 750);
+    return () => clearTimeout(interval);
+  }, [dots]);
+
+  //if step is almost done, show the step for a second before completing...
+  useEffect(() => {
+    if (currentStep === progressSteps["FINALISING_RESULTS"]) {
+      const timeout = setTimeout(() => {
+        setCurrentStep(progressSteps["FINALISING_RESULTS"]);
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  },[currentStep]); 
 
   return (
     <div className="space-y-2 sm:w-[25%] w-[75%]">
       <Progress value={progress} className="w-full border-1 h-4" />
       <div className="text-sm text-muted-foreground px-1 xl:text-lg">
         <div className="flex flex-row items-center text-sm">
-            <span>
-              {currentStep}
-            </span>
-            <span className="inline-block w-4 text-left">{dots}</span>
-          </div>
+          <span>
+            {currentStep}
+          </span>
+          <span className="inline-block w-4 text-left">
+            {dots}
+          </span>
+        </div>
         <div className="flex justify-between items-center text-sm">
           <span className="">{progress}%</span>
         </div>

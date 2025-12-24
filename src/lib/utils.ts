@@ -15,7 +15,12 @@ export const getNewFileName = (originalName: string): string => {
   return `${baseName}_${uuid}.${fileExtension}`;
 };
 
-//verify the repoUrl format and extract username and repo
+/*
+* verify the repoUrl format and extract username and repo
+* @param repoUrl - The GitHub repository URL to verify
+* @param setError - Optional function to set error messages
+* @returns An object containing sanitizedUsername and sanitizedRepo if valid, otherwise undefined
+*/
 export const verifyUrl = (
   repoUrl: string,
   setError?: (error: string) => void
@@ -40,6 +45,13 @@ export const verifyUrl = (
   return { sanitizedUsername, sanitizedRepo };
 };
 
+/*
+* verify the uploaded manifest file
+* @param file - The uploaded file to verify
+* @param setError - Function to set error messages
+* @param setFile - Function to set the valid file
+* @returns true if the file is valid, otherwise undefined
+*/
 export const verifyFile = (
   file: File,
   setError: (error: string) => void,

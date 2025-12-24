@@ -22,4 +22,6 @@ export const progressSteps: { [key: string]: string } = {
 export const PROGRESS_MESSAGES = [
   "Almost done here",
   "Just a tad more time",
+  "Preparing the final touches",
+  "Good things take time",
 ];

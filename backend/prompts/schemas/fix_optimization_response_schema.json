@@ -1,0 +1,78 @@
+{
+  "type": "object",
+  "properties": {
+    "optimization_analysis": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "redundancies_found": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "batch_opportunities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "execution_optimization": {
+      "type": "object",
+      "properties": {
+        "strategy": { "type": "string" },
+        "consolidated_commands": {
+          "type": "array",
+          "description": "Commands should be wrapped in <code></code> tags.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "command": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "parallel_execution_plan": { "type": "string" },
+        "sequential_dependencies": { "type": "string" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "operation_counts": {
+          "type": "object",
+          "properties": {
+            "original": { "type": "integer" },
+            "optimized": { "type": "integer" },
+            "reduction_percentage": { "type": "number" }
+          }
+        },
+        "time_savings_estimate": { "type": "string" },
+        "complexity_assessment": { "type": "string" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "properties": {
+        "benefits": { "type": "string" },
+        "risk_reduction": { "type": "string" },
+        "phases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "validation_strategy": { "type": "string" }
+      }
+    }
+  },
+  "required": ["optimization_analysis", "execution_optimization", "metrics", "implementation"]
+}

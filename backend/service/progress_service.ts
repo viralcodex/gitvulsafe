@@ -32,8 +32,8 @@ class ProgressService {
   /**
    * isEmpty - Check if there are no registered callbacks
    */
-  isEmpty(): boolean {
-    return this.callbacks.length === 0;
+  getCallBackCount(): number {
+    return this.callbacks.length;
   }
 
   /**
@@ -41,7 +41,11 @@ class ProgressService {
    * @param step - The current step name
    * @param progress - Progress percentage (0-100)
    */
-  progressUpdater(step: string, progress: number) {
+  progressUpdater(
+    step: string,
+    progress: number,
+    progressNumber: number = 0,
+  ): void {
     // Notify all registered callbacks
     this.callbacks.forEach((callback) => {
       try {
@@ -50,6 +54,13 @@ class ProgressService {
         console.error('Error in progress callback:', error);
       }
     });
+  }
+
+  /**
+   * Reset the service by clearing all callbacks
+   */
+  reset(): void {
+    this.clearCallbacks();
   }
 }
 export default ProgressService;

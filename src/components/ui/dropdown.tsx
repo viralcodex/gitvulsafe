@@ -88,6 +88,7 @@ export function Dropdown({
           disabled={loadingBranches || !shouldOpen}
           className={cn(
             "text-md w-full text-input justify-between overflow-y-hidden overflow-x-scroll scrollbar-background-hidden border-[3px] border-black p-4 transition-transform hover:text-secondary-foreground hover:-translate-x-0.5 hover:-translate-y-0.5 hover:transform hover:bg-gray-300 max-sm:w-full sm:p-6 group",
+            !branches || branches.length === 0 ? "opacity-60 cursor-not-allowed" : "",
             className
           )}
         >

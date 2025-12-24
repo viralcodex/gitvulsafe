@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { Dependency, GraphNode, Vulnerability } from "@/constants/model";
 import removeMarkdown from "remove-markdown";
@@ -173,7 +173,6 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
       );
     } catch (err) {
       setError("Failed to fetch AI summary: " + (err as Error).message);
-    } finally {
       setIsLoading(false);
     }
   }, [allDetails]);

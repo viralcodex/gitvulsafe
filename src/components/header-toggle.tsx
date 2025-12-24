@@ -13,17 +13,23 @@ interface HeaderToggleProps {
 }
 const HeaderToggle = ({ setIsFileHeaderOpen, from }: HeaderToggleProps) => {
   const handleToggle = () => {
-    if (from === "file") {
-      setIsFileHeaderOpen(false);
-    } 
-    if(from === "github")
-      setIsFileHeaderOpen(true);
+    switch (from) {
+      case "file":
+        setIsFileHeaderOpen(false);
+        break;
+      case "github":
+        setIsFileHeaderOpen(true);
+        break;
+    }
   };
   const getFileLogo = () => {
-    if (from === "file") {
-      return "/file-logo.svg";
-    } else {
-      return "/github.svg";
+    switch (from) {
+      case "file":
+        return "/file-logo.svg";
+      case "github":
+        return "/github.svg";
+      default:
+        return "/file-logo.svg";
     }
   };
   return (

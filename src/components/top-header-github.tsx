@@ -5,11 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
 import { cn, verifyUrl } from "@/lib/utils";
-import { LucideArrowBigRight, LucideLoader2 } from "lucide-react";
-import React from "react";
+import { LucideArrowBigRight, LucideLoader2, RefreshCcwDot } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Dependency, EcosystemGraphMap } from "@/constants/model";
 import HeaderToggle from "./header-toggle";
+import HeaderOptions from "./header-options";
+import { ButtonGroup } from "./ui/button-group";
 
 interface TopHeaderProps {
   className?: string;
@@ -61,19 +63,27 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
     onRefresh,
     resetGraphSvg
   } = props;
-
+  const [result, setResult] = useState<{ sanitizedUsername: string; sanitizedRepo: string, branch: string }>();
   const router = useRouter();
+
+  useEffect(() => {
+    if (inputUrl) {
+      const verified = verifyUrl(inputUrl, setBranchError);
+      if (verified) {
+        setResult({ ...verified, branch: selectedBranch || "" });
+      }
+    }
+    return () => { setResult(undefined); };
+  }, [inputUrl, setBranchError, selectedBranch]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const result = verifyUrl(inputUrl, setBranchError);
     if (!result) {
-      return; // If URL is invalid, do not proceed
+      return;
     }
     const { sanitizedUsername, sanitizedRepo } = result;
-    console.log("Sanitized Username:", sanitizedUsername);
-    console.log("Sanitized Repo:", sanitizedRepo);
-
+    // console.log("Sanitized Username:", sanitizedUsername);
+    // console.log("Sanitized Repo:", sanitizedRepo);
     if (!branches || branches.length === 0) {
       console.log("No branches available to select");
       return;
@@ -91,8 +101,8 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
 
     if (currentUrl.includes(newUrl.slice(1))) {
       console.log(newUrl.slice(1));
-      console.log("Same URL detected, triggering refresh");
-      onRefresh?.();
+      console.log("Same URL detected, showing existing data");
+      setLoading(false); // Reset loading state and show existing data
       return;
     } else {
       // Different URL - navigate normally
@@ -102,6 +112,16 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
     }
   };
 
+  const onRefreshAnalysis = () => {
+    if (!result) {
+      return;
+    }
+    setLoading(true);
+    setIsNodeClicked(false);
+    setBranchError("");
+    onRefresh();
+  };
+  const isDisabled = () => {return isLoading || loadingBranches || !result};
   return (
     <form
       onSubmit={handleSubmit}
@@ -117,41 +137,59 @@ const TopHeaderGithub = (props: TopHeaderProps) => {
             from="github"
             setIsFileHeaderOpen={setIsFileHeaderOpen}
           />
+          <HeaderOptions data={result} />
           <Input
             className="sm:w-[60%] h-13 border-1"
             placeholder="https://github.com/username/repo"
             value={inputUrl}
             onChange={handleInputChange}
           />
-          <div className="sm:w-[35%] h-13">
-            <Dropdown
-              className="shadow-none border-input border-1 h-full text-sm px-3"
-              branches={branches}
-              selectedBranch={selectedBranch}
-              onSelectBranch={setSelectedBranch}
-              loadingBranches={loadingBranches}
-              setError={setBranchError}
-              hasMore={hasMore}
-              totalBranches={totalBranches}
-              loadNextPage={loadNextPage}
-            />
-          </div>
-          <Button
-            className="sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm cursor-pointer"
-            type="submit"
-            disabled={
-              isLoading || loadingBranches || !inputUrl || !branches.length
-            }
-          >
-            {isLoading ? (
-              <LucideLoader2 className="animate-spin" strokeWidth={3} />
-            ) : (
-              <span className="flex flex-row items-center justify-center">
-                <span className="sm:hidden">Analyse</span>
-                <LucideArrowBigRight strokeWidth={3} />
-              </span>
-            )}
-          </Button>
+        <div className="sm:w-[35%] sm:max-w-[35%] h-13">
+          <Dropdown
+            className="shadow-none border-input border-1 h-full text-sm px-3 overflow-x-auto"
+            branches={branches}
+            selectedBranch={selectedBranch}
+            onSelectBranch={setSelectedBranch}
+            loadingBranches={loadingBranches}
+            setError={setBranchError}
+            hasMore={hasMore}
+            totalBranches={totalBranches}
+            loadNextPage={loadNextPage}
+          />
+        </div>
+          <ButtonGroup className="sm:flex-row">
+            <Button
+              className="flex-1 sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm cursor-pointer disabled:cursor-not-allowed"
+              type="submit"
+              disabled={isDisabled()}
+              aria-label="submit-github-repo"
+            >
+              {isLoading ? (
+                <LucideLoader2 className="animate-spin" strokeWidth={3} />
+              ) : (
+                <span className="flex flex-row items-center justify-center gap-x-2">
+                  <span className="sm:hidden">Analyse</span>
+                  <LucideArrowBigRight strokeWidth={3} />
+                </span>
+              )}
+            </Button>
+            <Button
+              className="flex-1 sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm cursor-pointer disabled:cursor-not-allowed"
+              type="button"
+              onClick={onRefreshAnalysis}
+              disabled={isDisabled()}
+              aria-label="refresh-github-repo"
+            >
+              {isLoading ? (
+                <LucideLoader2 className="animate-spin" strokeWidth={3} />
+              ) : (
+                <span className="flex flex-row items-center justify-center gap-x-2">
+                  <span className="sm:hidden">Refresh</span>
+                  <RefreshCcwDot strokeWidth={3} />
+                </span>
+              )}
+            </Button>
+          </ButtonGroup>
         </Card>
       </div>
     </form>

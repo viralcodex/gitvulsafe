@@ -4,8 +4,6 @@ import "./globals.css";
 import Header from "@/components/header";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "@/providers/themeProvider";
-import { TextSelectionProvider } from "@/providers/textSelectionProvider";
-import FloatingAiForm from "@/components/floating-ai-form";
 import { NetworkStatusProvider } from "@/providers/networkStatusProvider";
 import RepoBranchProvider from "@/providers/repoBranchProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -65,12 +63,9 @@ export default function RootLayout({
         <ThemeProvider>
           <RepoBranchProvider>
             <NetworkStatusProvider>
-              <TextSelectionProvider>
                 <Header />
                 <main className="flex-grow pt-16">{children}</main>
-                <FloatingAiForm />
                 <Toaster />
-              </TextSelectionProvider>
             </NetworkStatusProvider>
           </RepoBranchProvider>
         </ThemeProvider>

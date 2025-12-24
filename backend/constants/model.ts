@@ -191,3 +191,39 @@ export interface AiResponsePart {
 export interface MulterRequest extends Request {
   file?: Express.Multer.File;
 }
+
+export interface CachedAnalysis {
+  uuid: string;
+  username: string;
+  repo: string;
+  branch: string;
+  branches: string[];
+  data: DependencyApiResponse | null;
+  created_at: Date;
+}
+
+export interface ProgressUpdate {
+  step: string;
+  progress: number;
+  seqNumber: number;
+  timestamp: Date;
+}
+
+export interface IndividualAgentState {
+  dependencyData: Dependency;
+  currentIndex: number;
+  vulnerabilityFixPlans: { [dep: string]: Record<string, unknown> };
+  referenceSummary: string;
+  finalFixPlan: string;
+  errors?: string[];
+}
+
+export interface GlobalAgentState {
+  vulnerabilityFixPlans: { [dep: string]: Record<string, unknown> };
+  context: Record<string, unknown>;
+  globalFixPlan: Record<string, unknown>;
+  optimizedPlan: Record<string, unknown>;
+  conflictResolutionPlan: Record<string, unknown>;
+  finalStrategy: Record<string, unknown>;
+  errors?: string[];
+}

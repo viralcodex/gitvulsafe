@@ -3,6 +3,10 @@ import {
   ManifestFileContentsApiResponse,
   ProgressSSE,
   Vulnerability,
+  GlobalFixPlanSSEMessage,
+  FixOptimisationPlanSSEMessage,
+  ConflictResolutionPlanSSEMessage,
+  StrategyRecommendationSSEMessage,
 } from "@/constants/model";
 import { getNewFileName } from "./utils";
 import { progressSteps } from "@/constants/constants";
@@ -14,6 +18,9 @@ const baseUrl =
 
 const github_pat =
   process.env.GITHUB_PAT ?? localStorage.getItem("github_pat") ?? undefined;
+
+// Default timeout for API calls (20 seconds)
+const DEFAULT_TIMEOUT = 20000;
 
 export async function getRepoBranches(
   username: string,
@@ -34,6 +41,7 @@ export async function getRepoBranches(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ username, repo, github_pat, page, pageSize }),
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT),
     });
 
     if (response.status === 429) {
@@ -62,6 +70,7 @@ export async function getManifestFileContents(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ username, repo, branch, github_pat }),
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT),
     });
 
     if (response.status === 429) {
@@ -72,6 +81,9 @@ export async function getManifestFileContents(
     return data;
   } catch (error) {
     console.error("Error fetching manifest file contents:", error);
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error("Request timed out. Please try again.");
+    }
     throw new Error(
       "Failed to fetch manifest file contents. Please try again later."
     );
@@ -82,7 +94,8 @@ export async function analyseDependencies(
   username: string,
   repo: string,
   branch: string,
-  file: string
+  file: string,
+  forceRefresh: boolean = false
 ): Promise<ManifestFileContentsApiResponse> {
   try {
     const url = file
@@ -96,7 +109,8 @@ export async function analyseDependencies(
       },
       body: file
         ? JSON.stringify({ file })
-        : JSON.stringify({ username, repo, branch, github_pat }),
+        : JSON.stringify({ username, repo, branch, github_pat, forceRefresh }),
+      signal: AbortSignal.timeout(60000), // 60 seconds for analysis
     });
 
     if (response.status === 429) {
@@ -107,6 +121,9 @@ export async function analyseDependencies(
     return data;
   } catch (error) {
     console.error("Error analysing dependencies:", error);
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error("Request timed out. Please try again.");
+    }
     throw new Error("Failed to analyse dependencies. Please try again later.");
   }
 }
@@ -128,6 +145,7 @@ export async function uploadFile(
     const response = await fetch(url, {
       method: "POST",
       body: formData,
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT),
     });
 
     if (!response.ok) {
@@ -142,6 +160,9 @@ export async function uploadFile(
     return { response: await response.json(), newFileName };
   } catch (error) {
     console.error("Error uploading file:", error);
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error("File upload timed out. Please try again.");
+    }
     throw new Error("Failed to upload file. Please try again later.");
   }
 }
@@ -160,6 +181,7 @@ export async function getAiVulnerabilitiesSummary(vulnerabilities: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ vulnerabilities }),
+      signal: AbortSignal.timeout(60000), // 60 seconds for AI requests
     });
 
     if (!response.ok) {
@@ -174,6 +196,9 @@ export async function getAiVulnerabilitiesSummary(vulnerabilities: {
     return data.summary;
   } catch (error) {
     console.error("Error generating AI vulnerabilities summary:", error);
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error("AI summary generation timed out. Please try again.");
+    }
     throw new Error(
       "Failed to generate AI vulnerabilities summary. Please try again later."
     );
@@ -198,6 +223,7 @@ export async function getInlineAiResponse(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ prompt, selectedText, context }),
+      signal: AbortSignal.timeout(60000), // 60 seconds for AI requests
     });
 
     if (!response.ok) {
@@ -212,6 +238,9 @@ export async function getInlineAiResponse(
     return data.response;
   } catch (error) {
     console.error("Error getting inline AI response:", error);
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error("AI response timed out. Please try again.");
+    }
     throw new Error(
       "Failed to get inline AI response. Please try again later."
     );
@@ -236,7 +265,6 @@ export function progressSSE(
           onConnection();
           return;
         }
-
         if (data.step && typeof data.progress === "number") {
           const currentStepIndex = Object.keys(progressSteps).indexOf(
             data.step
@@ -279,7 +307,11 @@ export async function getFixPlanSSE(
   branch: string,
   onMessage: (data: Record<string, unknown>) => void,
   onError: (error: string) => void,
-  onComplete: () => void
+  onComplete: () => void,
+  onGlobalFixPlanMessage: (data: GlobalFixPlanSSEMessage) => void,
+  onFixOptimizationMessage: (data: FixOptimisationPlanSSEMessage) => void,
+  onConflictResolutionMessage: (data: ConflictResolutionPlanSSEMessage) => void,
+  onStrategyRecommendationMessage: (data: StrategyRecommendationSSEMessage) => void
 ): Promise<EventSource> {
   const url = new URL(`${baseUrl}/fixPlan`);
   url.searchParams.append("username", username);
@@ -291,12 +323,12 @@ export async function getFixPlanSSE(
   eventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      // // console.log("SSE Data:", data);
       if (data.type === "connection") {
         // // console.log("SSE Connection established:", data.message);
         return;
       }
       switch (data.step) {
+        //phase 1
         case "vulnerability_analysis_start":
           break;
         case "vulnerability_analysis_complete":
@@ -307,6 +339,43 @@ export async function getFixPlanSSE(
         case "fix_plan_generation_complete":
           break;
         case "vulnerability_analysis_error":
+          onError(data.progress as string);
+          break;
+        //phase 2
+        case "global_planning_start":
+          // onMessage(data.data ?? {});
+          break;
+        case 'global_planning_complete':
+          onGlobalFixPlanMessage(data.data as GlobalFixPlanSSEMessage ?? {});
+          break;
+        case 'global_planning_error':
+          onError(data.progress as string);
+          break;
+        case 'fix_optimization_start':
+          // onMessage(data.data ?? {});
+          break;
+        case 'fix_optimization_complete':
+          onFixOptimizationMessage(data.data as FixOptimisationPlanSSEMessage ?? {});
+          break;
+        case 'fix_optimization_error':
+          onError(data.progress as string);
+          break;
+        case 'conflict_resolution_start':
+          // onMessage(data.data ?? {});
+          break;
+        case 'conflict_resolution_complete':
+          onConflictResolutionMessage(data.data as ConflictResolutionPlanSSEMessage ?? {});
+          break;
+        case 'conflict_resolution_error':
+          onError(data.progress as string);
+          break;
+        case 'strategy_recommendation_start':
+          // onMessage(data.data ?? {});
+          break;
+        case 'strategy_recommendation_complete':
+          onStrategyRecommendationMessage(data.data as StrategyRecommendationSSEMessage ?? {});
+          break;
+        case 'strategy_recommendation_error':
           onError(data.progress as string);
           break;
         case "analysis_complete":

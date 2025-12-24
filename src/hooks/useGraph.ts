@@ -17,13 +17,13 @@ import { manifestFiles } from "@/constants/constants";
 
 //and then based on the results we will create a graph
 export const useGraph = (
-  refreshTrigger: number,
   setError: (error: string) => void,
   setManifestError: (error: string[]) => void,
   username?: string,
   repo?: string,
   branch?: string,
-  file?: string
+  file?: string,
+  forceRefresh: boolean = false
 ) => {
   const [dependencies, setDependencies] = useState<GroupedDependencies>({});
   const [manifestData, setManifestData] =
@@ -36,11 +36,12 @@ export const useGraph = (
       username?: string,
       repo?: string,
       branch?: string,
-      file?: string
+      file?: string,
+      forceRefresh: boolean = false
     ) => {
       try {
         const manifestData: ManifestFileContentsApiResponse =
-          await analyseDependencies(username!, repo!, branch!, file!);
+          await analyseDependencies(username!, repo!, branch!, file!, forceRefresh);
         // console.log(
         //   "Manifest Data:",
         //   manifestData,
@@ -257,8 +258,9 @@ export const useGraph = (
     //   file,
     //   refreshTrigger,
     // });
-    fetchDependencies(username, repo, branch, file);
-  }, [branch, file, repo, username, refreshTrigger, fetchDependencies]);
+    // Pass forceRefresh flag directly
+    fetchDependencies(username, repo, branch, file, forceRefresh);
+  }, [branch, file, repo, username, fetchDependencies, forceRefresh]);
 
   useEffect(() => {
     if (Object.keys(dependencies).length > 0) {

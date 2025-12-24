@@ -5,7 +5,6 @@ import { db } from '../db/db';
 
 import { dependencies, uploadedManifests } from './schema';
 
-// Get branches from any existing analysis for this repo (regardless of branch)
 export function getCachedBranches(username: string, repo: string) {
   return db
     .select({ branches: dependencies.branches, branch: dependencies.branch })
@@ -58,7 +57,7 @@ export function upsertAnalysis({
     });
 }
 
-export async function deleteCachedAnalysis(
+export function deleteCachedAnalysis(
   username: string,
   repo: string,
   branch: string,
@@ -74,14 +73,14 @@ export async function deleteCachedAnalysis(
     );
 }
 
-export async function insertFile(file: { name: string; content: string }) {
+export function insertFile(file: { name: string; content: string }) {
   return db.insert(uploadedManifests).values({
     filename: file.name,
     content: file.content,
   });
 }
 
-export async function getFileDetails(fileName: string) {
+export function getFileDetails(fileName: string) {
   return db
     .select()
     .from(uploadedManifests)
