@@ -75,10 +75,7 @@ const TopHeaderFile = (props: TopHeaderFileProps) => {
       <div className="flex flex-col items-center justify-center px-4 pt-4 w-full">
         <Card className="relative max-h-[200px] bg-background sm:max-w-[700px] w-full border-2 border-accent mx-auto mt-4 flex justify-between p-4 gap-4 sm:flex-row flex-col">
           <HeaderToggle from="file" setIsFileHeaderOpen={setIsFileHeaderOpen} />
-          <div className="border-1 rounded-md text-accent text-md flex flex-col items-center justify-center sm:max-w-[40%] w-full p-2">
-            <span className="">{file}</span>
-          </div>
-          <div className="flex flex-col items-center justify-center sm:w-[51%] h-13 rounded-md border-1 px-4 py-2">
+          <div className="flex flex-col items-center justify-center sm:w-[54.5%] h-13 rounded-md border-1 px-4 py-2">
             <Input
               className="flex flex-col items-center justify-center border-none cursor-pointer text-sm"
               type="file"
@@ -87,6 +84,9 @@ const TopHeaderFile = (props: TopHeaderFileProps) => {
                 setError("");
               }}
             />
+          </div>
+          <div className="border-1 rounded-md text-accent text-md flex flex-col items-center justify-center sm:w-[42%] w-full p-2">
+            <span className="">{file}</span>
           </div>
           <Button
             className="sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm cursor-pointer"

@@ -1,3 +1,5 @@
+import { writeFileSync } from 'fs';
+
 import { AiResponsePart } from '../constants/model';
 
 /**
@@ -56,6 +58,24 @@ export function parseAiResponseParts(parts: AiResponsePart[]): string {
   return textParts.map((part) => part.text).join('') ?? '{}';
 }
 
+//PNG Image for the graph
+/**
+ * Generating graph image for visualization
+ * @param graph Langgraph graph
+ */
+export async function generateGraphImage(graph: any) {
+  console.log('Generating graph visualization...');
+  try {
+    const graphImage = (await graph.getGraphAsync()).drawMermaidPng();
+    const arrayBuffer = await (await graphImage).arrayBuffer();
+    const filePath = `./graph_image-${(Math.random() * 100).toFixed(0)}.png`;
+    writeFileSync(filePath, new Uint8Array(arrayBuffer));
+    console.log(`Graph image saved to ${filePath}`);
+  } catch (error) {
+    console.error('Error generating or saving graph image:', error);
+  }
+}
+
 // Define types for sanitization
 type SanitizableValue =
   | string
@@ -97,7 +117,7 @@ export const sanitize = (input: SanitizableObject): SanitizableObject => {
 /**
  * Sanitize string inputs to prevent various attacks
  */
-const sanitizeString = (str: string): string => {
+export const sanitizeString = (str: string): string => {
   if (typeof str !== 'string') {
     return String(str);
   }
@@ -107,6 +127,7 @@ const sanitizeString = (str: string): string => {
       // Trim whitespace
       .trim()
       // Remove null bytes
+      // eslint-disable-next-line no-control-regex
       .replace(/\x00/g, '')
       // Remove or escape HTML/XML tags
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -224,6 +245,7 @@ export const sanitizeFileName = (fileName: string): string => {
       .replace(/\.\./g, '')
       .replace(/[/\\]/g, '')
       // Remove dangerous characters
+      // eslint-disable-next-line no-control-regex
       .replace(/[<>:"|?*\x00-\x1f]/g, '')
       // Limit length
       .slice(0, 255)
@@ -263,30 +285,4 @@ export const sanitizeUrl = (url: string): string => {
   } catch {
     return '';
   }
-};
-
-/**
- * Helper function to safely extract string values from sanitized objects
- */
-export const extractSanitizedString = (
-  value: SanitizableValue,
-  fallback: string = '',
-): string => {
-  if (typeof value === 'string') {
-    return value;
-  }
-  return fallback;
-};
-
-/**
- * Helper function to safely extract number values from sanitized objects
- */
-export const extractSanitizedNumber = (
-  value: SanitizableValue,
-  fallback: number = 0,
-): number => {
-  if (typeof value === 'number') {
-    return value;
-  }
-  return fallback;
 };

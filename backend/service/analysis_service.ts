@@ -1,10 +1,9 @@
 import { Cvss3P0, Cvss4P0 } from 'ae-cvss-calculator';
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 import yaml from 'js-yaml';
 import { parseStringPromise } from 'xml2js';
 
 import {
-  GITHUB_API_BASE_URL,
   DEPS_DEV_BASE_URL,
   OSV_DEV_VULN_BATCH_URL,
   OSV_DEV_VULN_DET_URL,
@@ -33,14 +32,13 @@ import {
   TransitiveDependency,
   DependencyApiResponse,
   FileDetails,
-  Branch,
   OSVQuery,
 } from '../constants/model';
 
+import GithubService from './github_service';
 import ProgressService from './progress_service';
 
 class AnalysisService {
-  private githubClient: AxiosInstance;
   private globalDependencyMap;
   private dependencyFileMapping;
   private stepErrors;
@@ -53,19 +51,12 @@ class AnalysisService {
     transitiveConcurrency: DEFAULT_TRANSITIVE_CONCURRENCY,
     transitiveBatchSize: DEFAULT_TRANSITIVE_BATCH_SIZE,
   };
+  private githubService: GithubService;
 
-  constructor(githubPAT?: string, progressService?: ProgressService) {
-    this.githubClient = axios.create({
-      baseURL: GITHUB_API_BASE_URL,
-      headers: githubPAT
-        ? {
-            Authorization: `Bearer ${githubPAT}`,
-            Accept: 'application/vnd.github.v3+json',
-          }
-        : {
-            Accept: 'application/vnd.github.v3+json',
-          },
-    });
+  constructor(
+    githubPAT: string = '',
+    progressService: ProgressService | null = null,
+  ) {
     this.stepErrors = new Map<string, string[]>();
     this.globalDependencyMap = new Map<string, Dependency>();
     this.dependencyFileMapping = new Map<string, string[]>();
@@ -78,6 +69,7 @@ class AnalysisService {
       transitiveBatchSize: 15,
     });
     this.progressService = progressService ?? new ProgressService();
+    this.githubService = new GithubService(githubPAT ?? '');
   }
 
   /**
@@ -113,6 +105,7 @@ class AnalysisService {
     concurrency: number,
     processor: (item: T) => Promise<R>,
     description: string,
+    progressNumber: number,
   ): Promise<R[]> {
     const results: R[] = [];
 
@@ -140,96 +133,22 @@ class AnalysisService {
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults.flat());
 
-      // Progress logging
+      // Progress logging with intermediate progress tracking
       const processed = Math.min(i + concurrency, batches.length);
-      const processedPercentage = (processed / batches.length) * 100;
+      const progressPercentage = (processed / batches.length) * 100;
       console.log(
-        `${description}: Processed ${processed}/${batches.length} batches`,
+        `${description}: Processed ${processed}/${batches.length} batches (${progressPercentage.toFixed(1)}%)`,
       );
-      this.progressService.progressUpdater(description, processedPercentage);
+
+      // Send progress update with the current step and percentage (not decimal sequence numbers)
+      this.progressService.progressUpdater(
+        description,
+        progressPercentage,
+        progressNumber, // Use the base progress number, not decimal adjustments
+      );
     }
 
     return results;
-  }
-
-  /**
-   * Fetches default branch for a given repo
-   * @param username - GitHub username/organization
-   * @param repo - Repository name
-   * @returns Promise<string[]> - list of branch names
-   */
-  async getDefaultBranch(username: string, repo: string): Promise<string> {
-    try {
-      const response = await this.githubClient.get(
-        `/repos/${username}/${repo}`,
-      );
-      return response.data.default_branch;
-    } catch (error) {
-      console.error('Error fetching default branch:', error);
-      throw new Error('Failed to fetch default branch from GitHub');
-    }
-  }
-
-  /**
-   * Fetches branches for a given repo with true server-side pagination
-   * @param username - GitHub username/organization
-   * @param repo - Repository name
-   * @param page - Page number (1-based)
-   * @param perPage - Number of branches per page
-   * @returns Promise<{ branches: string[]; defaultBranch: string; hasMore: boolean; total: number }>
-   */
-  async getBranches(
-    username: string,
-    repo: string,
-    page: number = 1,
-    perPage: number = 100,
-  ): Promise<{
-    branches: string[];
-    defaultBranch: string;
-    hasMore: boolean;
-    total: number;
-  }> {
-    try {
-      // Fetch only the requested page from GitHub API
-      const response = await this.githubClient.get(
-        `/repos/${username}/${repo}/branches`,
-        { params: { per_page: perPage, page } },
-      );
-
-      const branches = response.data.map((branch: Branch) => branch.name);
-
-      const defaultBranch = await this.getDefaultBranch(username, repo);
-
-      // Determine if there are more pages by checking Link header
-      let hasMore = false;
-      let totalPages = page;
-
-      const linkHeader = response.headers['link'];
-      if (linkHeader) {
-        hasMore = linkHeader.includes('rel="next"');
-        const lastMatch = linkHeader.match(/&page=(\d+)>; rel="last"/);
-        if (lastMatch) {
-          totalPages = parseInt(lastMatch[1], 10);
-        }
-      } else if (response.data.length === perPage) {
-        hasMore = true;
-      }
-
-      // Approximate total count
-      const estimatedTotal = hasMore
-        ? totalPages * perPage
-        : (page - 1) * perPage + branches.length;
-
-      return {
-        branches,
-        defaultBranch,
-        hasMore,
-        total: estimatedTotal,
-      };
-    } catch (error) {
-      console.error('Error fetching branches:', error);
-      throw new Error('Failed to fetch branches from GitHub');
-    }
   }
 
   /**
@@ -247,7 +166,7 @@ class AnalysisService {
   ): Promise<ManifestFileContents> {
     try {
       //get file tree for the specified branch
-      const response = await this.githubClient.get(
+      const response = await this.githubService.getGithubApiResponse(
         `/repos/${username}/${repo}/git/trees/${branch}?recursive=1`,
       );
 
@@ -323,7 +242,7 @@ class AnalysisService {
         const contents = await Promise.all(
           files.map(async (file) => {
             try {
-              const response = await this.githubClient.get(
+              const response = await this.githubService.getGithubApiResponse(
                 `/repos/${username}/${repo}/contents/${file.path}?ref=${branch}`,
               );
               const content = response.data.content;
@@ -462,7 +381,6 @@ class AnalysisService {
         return await apiCall();
       } catch (error) {
         const isNonRetryable = this.isNonRetryableError(error);
-
         if (isNonRetryable || attempt === maxRetries) {
           if (isNonRetryable) {
             console.warn(
@@ -538,13 +456,15 @@ class AnalysisService {
   ): Promise<{ dependencies: DependencyGroups }> {
     this.resetGlobalState();
 
-    this.progressService.progressUpdater(PROGRESS_STEPS[0], 0);
+    this.progressService.progressUpdater(PROGRESS_STEPS[0], 0, 1); // Progress #1
+
     const manifestFiles =
       fileContents ?? (await this.getAllManifestData(username, repo, branch));
-    this.progressService.progressUpdater(PROGRESS_STEPS[0], 100);
 
-    this.progressService.progressUpdater(PROGRESS_STEPS[1], 0);
-    // Process all manifest files to collect unique dependencies
+    this.progressService.progressUpdater(PROGRESS_STEPS[0], 100, 2); // Progress #2
+
+    this.progressService.progressUpdater(PROGRESS_STEPS[1], 0, 3); // Progress #3
+
     await Promise.all([
       this.processNpmFiles(manifestFiles['npm'] ?? []),
       Promise.resolve(this.processPhpFiles(manifestFiles['php'] ?? [])),
@@ -559,7 +479,8 @@ class AnalysisService {
 
     // Map dependencies back to their respective files
     const result = this.mapDependenciesToFiles(processedDependencies);
-    this.progressService.progressUpdater(PROGRESS_STEPS[1], 100);
+
+    this.progressService.progressUpdater(PROGRESS_STEPS[1], 100, 4); // Progress #4
 
     // console.log('Parsed dependencies:', result);
     return { dependencies: result };
@@ -868,9 +789,127 @@ class AnalysisService {
         filtered[group] = relevantDeps;
       }
     });
-    console.log('Filtered main dependencies:');
-    console.dir(filtered, { depth: null });
+    // console.log('Filtered main dependencies:');
+    // console.dir(filtered, { depth: null });
     return filtered;
+  }
+
+  /**
+   * Gets transitive dependencies for a list of dependencies from deps.dev
+   * @param dependencies - list of dependencies to get transitive dependencies for
+   * @returns Dependency[] - list of dependencies with transitive dependencies attached to them
+   */
+  async getTransitiveDependencies(
+    dependencies: DependencyGroups,
+  ): Promise<DependencyGroups> {
+    // Flatten all dependencies for batch processing
+    const allDeps: Dependency[] = Object.values(dependencies).flat();
+    const validDeps = allDeps.filter((dep) => dep.version !== 'unknown');
+
+    console.log(
+      `Fetching transitive dependencies for ${validDeps.length} dependencies...`,
+    );
+    this.progressService.progressUpdater(PROGRESS_STEPS[2], 0, 5); // Progress #5
+
+    // Process transitive dependencies in parallel batches
+    const transitiveDepsResults = await this.processBatchesInParallel(
+      validDeps,
+      this.performanceConfig.transitiveBatchSize,
+      this.performanceConfig.transitiveConcurrency,
+      async (dep: Dependency): Promise<TransitiveDependencyResult> => {
+        try {
+          if (dep.version === 'unknown') {
+            throw new Error('Unknown version, skipping');
+          }
+          const transitiveUrl = `${DEPS_DEV_BASE_URL}/${dep.ecosystem}/packages/${encodeURIComponent(dep.name)}/versions/${encodeURIComponent(this.normalizeVersion(dep.version))}:dependencies`;
+
+          const response = await this.retryApiCall(
+            () => axios.get<DepsDevDependency>(transitiveUrl),
+            4,
+            800,
+            `Transitive dependencies for ${dep.name}@${dep.version}`,
+          );
+
+          const transitiveDeps = response.data;
+          if (transitiveDeps) {
+            const transitiveDependencies: TransitiveDependency = {
+              nodes: [],
+              edges: [],
+            };
+
+            // Map the data from deps.dev to our Dependency type
+            transitiveDeps.nodes.forEach((node) => {
+              transitiveDependencies.nodes?.push({
+                name: node.versionKey.name,
+                version: node.versionKey.version,
+                ecosystem: this.mapEcosystem(node.versionKey.system),
+                vulnerabilities: [],
+                dependencyType: node.relation,
+              });
+            });
+
+            // Add the edges from the deps.dev response
+            transitiveDependencies.edges = transitiveDeps.edges.map((edge) => ({
+              source: edge.fromNode,
+              target: edge.toNode,
+              requirement: edge.requirement,
+            }));
+
+            return {
+              dependency: dep,
+              transitiveDependencies,
+              success: true,
+            };
+          }
+        } catch (error) {
+          console.warn(
+            `Failed to fetch transitive dependencies for ${dep.name}@${dep.version}:`,
+            error instanceof Error ? error.message : error,
+          );
+          this.addStepError('Transitive Dependencies Fetch', error);
+        }
+
+        return {
+          dependency: dep,
+          transitiveDependencies: { nodes: [], edges: [] },
+          success: false,
+        };
+      },
+      PROGRESS_STEPS[2],
+      6, // Progress #6 for intermediate tracking
+    );
+
+    this.progressService.progressUpdater(PROGRESS_STEPS[2], 100, 7); // Progress #7
+
+    // Apply results back to the original dependencies
+    const erroredDeps: Dependency[] = [];
+
+    transitiveDepsResults.forEach((result) => {
+      if (result.success) {
+        result.dependency.transitiveDependencies =
+          result.transitiveDependencies;
+      } else {
+        erroredDeps.push({
+          name: result.dependency.name,
+          version: result.dependency.version,
+          ecosystem: result.dependency.ecosystem,
+        });
+      }
+    });
+
+    if (erroredDeps.length > 0) {
+      console.log(
+        `Failed to fetch transitive dependencies for ${erroredDeps.length} packages:`,
+        erroredDeps.map((d) => `${d.name}@${d.version}`).join(', '),
+      );
+      this.addStepError(
+        'Transitive Dependencies Fetch',
+        `Failed to fetch transitive dependencies for ${erroredDeps.length} packages:`,
+      );
+    }
+
+    this.progressService.progressUpdater(PROGRESS_STEPS[2], 100, 7); // Progress #7
+    return dependencies;
   }
 
   /**
@@ -905,7 +944,7 @@ class AnalysisService {
       console.log(
         `Processing ${allForVuln.length} dependencies in parallel batches...`,
       );
-      this.progressService.progressUpdater(PROGRESS_STEPS[3], 0);
+      this.progressService.progressUpdater(PROGRESS_STEPS[3], 0, 8); // Progress #8
 
       // Process vulnerabilities for dependencies using parallel batches
       const batches: Dependency[][] = [];
@@ -984,17 +1023,18 @@ class AnalysisService {
           i + this.performanceConfig.vulnConcurrency,
           batches.length,
         );
-        const processPercentage = (processedBatches / batches.length) * 100;
+        const progressPercentage = (processedBatches / batches.length) * 100;
         console.log(
           `OSV vulnerability scanning: Processed ${processedBatches}/${batches.length} batches`,
         );
         this.progressService.progressUpdater(
           PROGRESS_STEPS[3],
-          processPercentage,
+          progressPercentage,
+          9, // Progress #9 for intermediate tracking
         );
       }
 
-      this.progressService.progressUpdater(PROGRESS_STEPS[3], 100);
+      this.progressService.progressUpdater(PROGRESS_STEPS[3], 100, 10); // Progress #10
 
       // Handle pagination for all collected paginated queries
       while (globalPaginatedQueries.length > 0) {
@@ -1041,7 +1081,7 @@ class AnalysisService {
         `Fetching details for ${vulnsIDs.size} unique vulnerabilities...`,
       );
 
-      this.progressService.progressUpdater(PROGRESS_STEPS[4], 0);
+      this.progressService.progressUpdater(PROGRESS_STEPS[4], 0, 11); // Progress #11
 
       const vulnDetailsResults = await this.processBatchesInParallel(
         Array.from(vulnsIDs),
@@ -1066,7 +1106,10 @@ class AnalysisService {
           }
         },
         PROGRESS_STEPS[4],
+        12, // Progress #12 for intermediate tracking
       );
+
+      this.progressService.progressUpdater(PROGRESS_STEPS[4], 100, 13); // Progress #13
 
       // Filter out failed requests
       const validVulnDetails = vulnDetailsResults.filter(
@@ -1104,7 +1147,7 @@ class AnalysisService {
           }
         });
       });
-      this.progressService.progressUpdater(PROGRESS_STEPS[4], 100);
+      this.progressService.progressUpdater(PROGRESS_STEPS[4], 100, 14); // Progress #14
     } catch (err) {
       console.error('Error fetching vulnerabilities:', err);
       this.addStepError('Vulnerability Enrichment', err);
@@ -1114,121 +1157,6 @@ class AnalysisService {
     const vulnerableDeps = this.filterVulnerableTransitives(dependencies);
     // Filter main dependencies to only keep those with vulnerabilities or vulnerable transitives
     return this.filterMainDependencies(vulnerableDeps);
-  }
-
-  /**
-   * Gets transitive dependencies for a list of dependencies from deps.dev
-   * @param dependencies - list of dependencies to get transitive dependencies for
-   * @returns Dependency[] - list of dependencies with transitive dependencies attached to them
-   */
-  async getTransitiveDependencies(
-    dependencies: DependencyGroups,
-  ): Promise<DependencyGroups> {
-    // Flatten all dependencies for batch processing
-    const allDeps: Dependency[] = Object.values(dependencies).flat();
-    const validDeps = allDeps.filter((dep) => dep.version !== 'unknown');
-
-    console.log(
-      `Fetching transitive dependencies for ${validDeps.length} dependencies...`,
-    );
-    this.progressService.progressUpdater(PROGRESS_STEPS[2], 0);
-
-    // Process transitive dependencies in parallel batches
-    const transitiveDepsResults = await this.processBatchesInParallel(
-      validDeps,
-      this.performanceConfig.transitiveBatchSize,
-      this.performanceConfig.transitiveConcurrency,
-      async (dep: Dependency): Promise<TransitiveDependencyResult> => {
-        try {
-          if (dep.version === 'unknown') {
-            throw new Error('Unknown version, skipping');
-          }
-          const transitiveUrl = `${DEPS_DEV_BASE_URL}/${dep.ecosystem}/packages/${encodeURIComponent(dep.name)}/versions/${encodeURIComponent(this.normalizeVersion(dep.version))}:dependencies`;
-
-          const response = await this.retryApiCall(
-            () => axios.get<DepsDevDependency>(transitiveUrl),
-            4,
-            800,
-            `Transitive dependencies for ${dep.name}@${dep.version}`,
-          );
-
-          const transitiveDeps = response.data;
-          if (transitiveDeps) {
-            const transitiveDependencies: TransitiveDependency = {
-              nodes: [],
-              edges: [],
-            };
-
-            // Map the data from deps.dev to our Dependency type
-            transitiveDeps.nodes.forEach((node) => {
-              transitiveDependencies.nodes?.push({
-                name: node.versionKey.name,
-                version: node.versionKey.version,
-                ecosystem: this.mapEcosystem(node.versionKey.system),
-                vulnerabilities: [],
-                dependencyType: node.relation,
-              });
-            });
-
-            // Add the edges from the deps.dev response
-            transitiveDependencies.edges = transitiveDeps.edges.map((edge) => ({
-              source: edge.fromNode,
-              target: edge.toNode,
-              requirement: edge.requirement,
-            }));
-
-            return {
-              dependency: dep,
-              transitiveDependencies,
-              success: true,
-            };
-          }
-        } catch (error) {
-          console.warn(
-            `Failed to fetch transitive dependencies for ${dep.name}@${dep.version}:`,
-            error instanceof Error ? error.message : error,
-          );
-          this.addStepError('Transitive Dependencies Fetch', error);
-        }
-
-        return {
-          dependency: dep,
-          transitiveDependencies: { nodes: [], edges: [] },
-          success: false,
-        };
-      },
-      PROGRESS_STEPS[2],
-    );
-
-    // Apply results back to the original dependencies
-    const erroredDeps: Dependency[] = [];
-
-    transitiveDepsResults.forEach((result) => {
-      if (result.success) {
-        result.dependency.transitiveDependencies =
-          result.transitiveDependencies;
-      } else {
-        erroredDeps.push({
-          name: result.dependency.name,
-          version: result.dependency.version,
-          ecosystem: result.dependency.ecosystem,
-        });
-      }
-    });
-
-    if (erroredDeps.length > 0) {
-      console.log(
-        `Failed to fetch transitive dependencies for ${erroredDeps.length} packages:`,
-        erroredDeps.map((d) => `${d.name}@${d.version}`).join(', '),
-      );
-      this.addStepError(
-        'Transitive Dependencies Fetch',
-        `Failed to fetch transitive dependencies for ${erroredDeps.length} packages:`,
-      );
-    }
-
-    this.progressService.progressUpdater(PROGRESS_STEPS[2], 100);
-    return dependencies;
   }
 
   /**
@@ -1270,10 +1198,10 @@ class AnalysisService {
         dependenciesWithChildren =
           await this.getTransitiveDependencies(dependencies);
 
-        console.log(
-          'Dependencies with transitive dependencies:',
-          dependenciesWithChildren,
-        );
+        // console.log(
+        //   'Dependencies with transitive dependencies:',
+        //   dependenciesWithChildren,
+        // );
       } catch (error) {
         console.warn(
           'Failed to get transitive dependencies, proceeding with main dependencies only:',
@@ -1296,13 +1224,21 @@ class AnalysisService {
       }
 
       const consolidatedErrors = this.consolidateStepErrors();
-      this.progressService.progressUpdater(PROGRESS_STEPS[5], 100);
+      this.progressService.progressUpdater(PROGRESS_STEPS[5], 100, 15); // Progress #15
+
+      // Final completion step
+      this.progressService.progressUpdater(PROGRESS_STEPS[5], 100, 16); // Progress #16 - Complete
+
       return {
         dependencies: analysedDependencies,
         error: consolidatedErrors.length > 0 ? consolidatedErrors : undefined,
       };
     } catch (error) {
       this.addStepError('Overall Analysis', error);
+
+      // Complete progress even on error
+      this.progressService.progressUpdater(PROGRESS_STEPS[5], 100, 16); // Progress #16 - Complete with error
+
       return {
         dependencies: {},
         error: this.consolidateStepErrors(),
@@ -1316,7 +1252,9 @@ class AnalysisService {
    * @returns Promise<DependencyApiResponse> - object containing parsed dependencies and transitive dependencies with enriched vulnerabilities
    */
   async analyseFile(fileDetails: FileDetails): Promise<DependencyApiResponse> {
-    this.progressService.progressUpdater(PROGRESS_STEPS[0], 0);
+    // Start the progress from step 1 for file analysis
+    this.resetGlobalState();
+
     const { filename, content } = fileDetails;
     const parsedFileName =
       filename.split('_')[0] + '.' + filename.split('.')[1];
@@ -1332,6 +1270,9 @@ class AnalysisService {
         error: ['Unsupported file type'],
       };
     }
+
+    // Step 1: Start file parsing
+    this.progressService.progressUpdater(PROGRESS_STEPS[0], 0, 1); // Progress #1
 
     const groupedFileContent = {
       [ecosystem]: [{ path: parsedFileName, content }],

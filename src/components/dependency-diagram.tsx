@@ -668,16 +668,16 @@ const DepDiagram = ({
       ) {
         const tx = width / 2 - targetNode.x * currentScale;
         const ty = height / 2 - targetNode.y * currentScale;
-        console.log("Centering on node:", targetNode.label, "at", {
-          selectedNodeId,
-          targetNodeX: targetNode.x,
-          targetNodeY: targetNode.y,
-          tx,
-          ty,
-          width,
-          height,
-          currentScale,
-        });
+        // console.log("Centering on node:", targetNode.label, "at", {
+        //   selectedNodeId,
+        //   targetNodeX: targetNode.x,
+        //   targetNodeY: targetNode.y,
+        //   tx,
+        //   ty,
+        //   width,
+        //   height,
+        //   currentScale,
+        // });
         const transform = d3.zoomIdentity.translate(tx, ty).scale(currentScale);
         svg.transition().duration(0).call(zoom.transform, transform);
       }
@@ -826,7 +826,6 @@ const DepDiagram = ({
 };
 
 export default React.memo(DepDiagram, (prevProps, nextProps) => {
-  // Custom comparison for complex props
   return (
     prevProps.graphData === nextProps.graphData &&
     prevProps.selectedEcosystem === nextProps.selectedEcosystem &&
@@ -834,6 +833,9 @@ export default React.memo(DepDiagram, (prevProps, nextProps) => {
     prevProps.windowSize.width === nextProps.windowSize.width &&
     prevProps.windowSize.height === nextProps.windowSize.height &&
     prevProps.isDiagramExpanded === nextProps.isDiagramExpanded &&
-    prevProps.isLoading === nextProps.isLoading
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.isMobile === nextProps.isMobile &&
+    prevProps.manifestError === nextProps.manifestError &&
+    prevProps.svgRef === nextProps.svgRef
   );
 });

@@ -19,8 +19,6 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint \"**/*.{js,ts,mjs}\"",
     "lint:fix": "eslint \"**/*.{js,ts,mjs}\" --fix",
-    "format": "prettier --write \"**/*.{js,ts,mjs,json,md}\"",
-    "format:check": "prettier --check \"**/*.{js,ts,mjs,json,md}\"",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
@@ -70,7 +68,6 @@
     "eslint-plugin-prettier": "^5.5.4",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",
-    "prettier": "^3.6.2",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"

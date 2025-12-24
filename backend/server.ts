@@ -5,18 +5,18 @@ import morgan from 'morgan';
 import multer from 'multer';
 
 import { config, isProduction, origin } from './config/env';
-import { DependencyApiResponse, manifestFiles } from './constants/model';
-import {
-  getCachedAnalysis,
-  upsertAnalysis,
-  insertFile,
-  getFileDetails,
-  deleteCachedAnalysis,
-} from './db/actions';
 import AgentsService from './service/agents_service';
 import AiService from './service/ai_service';
 import AnalysisService from './service/analysis_service';
+import GithubService from './service/github_service';
 import ProgressService from './service/progress_service';
+import {
+  cachedAnalysis,
+  deleteCachedAnalysis,
+  getCachedFileDetails,
+  insertFileCache,
+  upsertAnalysis,
+} from './utils/cache';
 import {
   analysisRateLimiter,
   aiRateLimiter,
@@ -24,18 +24,28 @@ import {
   inlineAiRateLimiter,
   fixPlanRateLimiter,
 } from './utils/rate_limits';
+import { sanitize, sanitizeFileName } from './utils/utils';
 import {
-  sanitize,
-  extractSanitizedString,
-  sanitizeFileName,
-} from './utils/utils';
+  validateAndReturnAnalysisCache,
+  validateFile,
+} from './utils/validations';
 
 const app = express();
 const PORT = config.port || 8080;
 const upload = multer();
 
-// Create a global progress service instance for broadcasting
-const globalProgressService = new ProgressService();
+const progressService = new ProgressService();
+const githubService = new GithubService();
+const analysisService = new AnalysisService();
+const aiService = new AiService();
+
+const getGithubService = (token?: string) => {
+  return token ? new GithubService(token) : githubService;
+};
+
+const getAnalysisService = (token?: string) => {
+  return token ? new AnalysisService(token, progressService) : analysisService;
+};
 
 if (isProduction) {
   app.use(
@@ -122,8 +132,8 @@ app.post('/branches', (req: Request, res: Response) => {
     }
 
     const sanitizedData = sanitize({ username, repo });
-    const sanitizedUsername = extractSanitizedString(sanitizedData.username);
-    const sanitizedRepo = extractSanitizedString(sanitizedData.repo);
+    const sanitizedUsername = String(sanitizedData.username);
+    const sanitizedRepo = String(sanitizedData.repo);
 
     console.log('Received branches request:', {
       username: sanitizedUsername,
@@ -131,10 +141,9 @@ app.post('/branches', (req: Request, res: Response) => {
       hasToken: !!github_pat,
     });
 
-    const analysisService = new AnalysisService(github_pat);
-
+    const githubService = getGithubService(github_pat);
     try {
-      const data = await analysisService.getBranches(
+      const data = await githubService.getBranches(
         sanitizedUsername,
         sanitizedRepo,
         page,
@@ -173,7 +182,7 @@ app.post(
   analysisRateLimiter,
   (req: Request, res: Response) => {
     (async () => {
-      const { username, repo, branch, github_pat } = req.body;
+      const { username, repo, branch, github_pat, forceRefresh } = req.body;
 
       // Input validation
       if (!username || !repo || !branch) {
@@ -182,37 +191,41 @@ app.post(
           .json({ error: 'Username, repo, and branch are required' });
       }
 
+      if (forceRefresh !== undefined && typeof forceRefresh !== 'boolean') {
+        return res.status(400).json({
+          error: 'Invalid forceRefresh parameter. Expected boolean.',
+        });
+      }
+
       console.log('Received analyseDependencies request:', {
         username,
         repo,
         branch,
+        forceRefresh: !!forceRefresh,
       });
 
-      let cachedData: Array<{
-        uuid: string;
-        username: string;
-        repo: string;
-        branch: string;
-        branches: string[];
-        data: DependencyApiResponse | null;
-        created_at: Date;
-      }> = [];
-
-      try {
-        cachedData = await getCachedAnalysis(username, repo, branch);
-
-        if (cachedData.length > 0 && cachedData[0].data) {
-          return res.json(cachedData[0].data);
+      if (!forceRefresh) {
+        const response = await cachedAnalysis(username, repo, branch, res);
+        if (response) {
+          console.log('Returning cached analysis for:', {
+            username,
+            repo,
+            branch,
+          });
+          return response;
         }
-      } catch (dbError) {
-        console.error('Database error checking cache:', dbError);
-        // Continue with fresh analysis if DB check fails
+      } else {
+        // Log force refresh requests for monitoring
+        console.log('Force refresh requested - bypassing cache:', {
+          username,
+          repo,
+          branch,
+          timestamp: new Date().toISOString(),
+        });
+        await deleteCachedAnalysis(username, repo, branch);
       }
 
-      const analysisService = new AnalysisService(
-        github_pat,
-        globalProgressService,
-      );
+      const analysisService = getAnalysisService(github_pat);
 
       try {
         const analysisResults = await analysisService.analyseDependencies(
@@ -223,19 +236,14 @@ app.post(
         // console.log("Analysis Results:", analysisResults);
 
         // Try to get branches for this repo/branch from cache, else fetch from GitHub
-        let branches =
-          cachedData.length > 0 ? cachedData[0].branches : undefined;
-        if (!branches) {
-          // fallback: fetch from GitHub
-          const branchData = await analysisService.getBranches(username, repo);
-          branches = branchData.branches;
-        }
+
+        const branchData = await githubService.getBranches(username, repo);
         await upsertAnalysis({
           username,
           repo,
           branch,
           data: analysisResults,
-          branches,
+          branches: branchData.branches,
         });
         res.json(analysisResults);
       } catch (error) {
@@ -265,34 +273,10 @@ app.post(
         });
       }
 
-      // Enhanced file validation
-      const maxSize = 5 * 1024 * 1024; // 5MB limit
-      if (file.size > maxSize) {
-        return res.status(400).json({
-          error: 'File size exceeds the 5MB limit',
-          maxSize: '5MB',
-          receivedSize: `${Math.round((file.size / 1024 / 1024) * 100) / 100}MB`,
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      // File type validation
-      const fileExtension = file.originalname.toLowerCase().split('.').pop();
-      if (
-        !fileExtension ||
-        !Object.values(manifestFiles).some((type) =>
-          type.includes(fileExtension),
-        )
-      ) {
-        return res.status(400).json({
-          error: 'Invalid file type',
-          timestamp: new Date().toISOString(),
-        });
-      }
-
+      validateFile(file, res); // Enhanced validation
       console.log('File uploaded:', file.originalname);
 
-      await insertFile({
+      await insertFileCache({
         name: sanitizeFileName(file.originalname),
         content: file.buffer.toString('utf-8'),
       });
@@ -327,13 +311,11 @@ app.post('/analyseFile', analysisRateLimiter, (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No file provided' });
     }
     console.log('Received analyseFile request for file:', file);
-    const analysisService = new AnalysisService();
-    const cachedFileDetails = await getFileDetails(file);
+    const analysisService = getAnalysisService();
+    const cachedFileDetails = await getCachedFileDetails(file);
     try {
       const analysisResults =
         await analysisService.analyseFile(cachedFileDetails);
-
-      // console.log("Analysis Results for file:", analysisResults);
 
       res.json(analysisResults);
     } catch (error) {
@@ -356,7 +338,6 @@ app.post('/aiVulnSummary', aiRateLimiter, (req: Request, res: Response) => {
       'Received aiVUlnSummary request with vulnerabilities:',
       vulnerabilities,
     );
-    const aiService = new AiService();
     try {
       const summary =
         await aiService.generateVulnerabilitySummary(vulnerabilities);
@@ -380,7 +361,6 @@ app.post('/inlineai', inlineAiRateLimiter, (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     console.log('Received inlineai request with text:', selectedText);
-    const aiService = new AiService();
     try {
       const response = await aiService.generateInlineResponse(
         prompt,
@@ -427,7 +407,7 @@ app.get('/fixPlan', fixPlanRateLimiter, (req: Request, res: Response) => {
     const timeout = setTimeout(() => {
       res.write(`data: ${JSON.stringify({ error: 'Request timeout' })}\n\n`);
       res.end();
-    }, 300000);
+    }, 120000); // 2 minutes timeout
 
     req.on('close', () => {
       console.log('Connection closed by client');
@@ -442,23 +422,12 @@ app.get('/fixPlan', fixPlanRateLimiter, (req: Request, res: Response) => {
     });
 
     try {
-      const data = await getCachedAnalysis(
-        username as string,
-        repo as string,
-        branch as string,
+      const data = await validateAndReturnAnalysisCache(
+        String(username),
+        String(repo),
+        String(branch),
+        res,
       );
-
-      if (data.length === 0 || !data[0].data) {
-        res.write(
-          `data: ${JSON.stringify({
-            error:
-              'Error: No analysis data found for the specified repo and branch. Please run dependency analysis first.',
-          })}\n\n`,
-        );
-        res.end();
-        return;
-      }
-
       // SSE Steps - init
       res.write(
         `data: ${JSON.stringify({
@@ -467,7 +436,7 @@ app.get('/fixPlan', fixPlanRateLimiter, (req: Request, res: Response) => {
         })}\n\n`,
       );
 
-      const agentsService = new AgentsService(data[0].data); //initial service with stored analysis data
+      const agentsService = new AgentsService(data); //initial service with stored analysis data
 
       const progressCallback = (
         step: string,
@@ -531,6 +500,8 @@ app.get('/progress', (req: Request, res: Response) => {
     'X-Accel-Buffering': 'no',
   });
 
+  console.log('New progress connection established');
+
   // Send initial connection confirmation
   res.write(
     `data: ${JSON.stringify({
@@ -542,26 +513,31 @@ app.get('/progress', (req: Request, res: Response) => {
 
   // Set up progress callback to send updates via SSE
   const progressCallback = (step: string, progress: number) => {
-    if (!res.destroyed) {
-      res.write(
-        `data: ${JSON.stringify({
-          step,
-          progress,
-          timestamp: new Date().toISOString(),
-        })}\n\n`,
-      );
+    if (!res.destroyed && !res.writableEnded) {
+      try {
+        res.write(
+          `data: ${JSON.stringify({
+            step,
+            progress,
+            timestamp: new Date().toISOString(),
+          })}\n\n`,
+        );
+      } catch (error) {
+        console.error('Error writing progress update:', error);
+      }
     }
   };
 
-  globalProgressService.addCallback(progressCallback);
-
-  if (globalProgressService.isEmpty()) {
-    res.end();
-  }
+  // Add callback to global service
+  progressService.addCallback(progressCallback);
+  console.log(
+    `Progress callback added. Total callbacks: ${progressService.getCallBackCount()}`,
+  );
 
   // Set a timeout to prevent hanging connections
   const timeout = setTimeout(() => {
-    if (!res.destroyed) {
+    if (!res.destroyed && !res.writableEnded) {
+      console.log('Progress connection timeout');
       res.write(
         `data: ${JSON.stringify({
           type: 'timeout',
@@ -571,21 +547,68 @@ app.get('/progress', (req: Request, res: Response) => {
       );
       res.end();
     }
-  }, 200000); // 4 minutes timeout
+  }, 300000); // 5 minutes timeout
+
+  // Send periodic heartbeat to detect broken connections
+  const heartbeat = setInterval(() => {
+    if (!res.destroyed && !res.writableEnded) {
+      try {
+        res.write(
+          `data: ${JSON.stringify({
+            type: 'heartbeat',
+            timestamp: new Date().toISOString(),
+          })}\n\n`,
+        );
+      } catch {
+        console.log('Heartbeat failed, connection likely broken');
+        clearInterval(heartbeat);
+      }
+    } else {
+      clearInterval(heartbeat);
+    }
+  }, 30000); // Every 30 seconds
 
   req.on('close', () => {
     console.log('Progress connection closed by client');
-    globalProgressService.removeCallback(progressCallback);
+    progressService.removeCallback(progressCallback);
+    console.log(
+      `Progress callback removed. Remaining callbacks: ${progressService.getCallBackCount()}`,
+    );
     clearTimeout(timeout);
+    clearInterval(heartbeat);
+
+    // Only reset if no more active connections
+    if (progressService.getCallBackCount() === 0) {
+      console.log('No more active connections, resetting progress service');
+      progressService.reset();
+    }
+
     if (!res.destroyed) {
       res.end();
     }
   });
 
-  req.on('error', () => {
-    console.log('Progress connection error');
-    globalProgressService.removeCallback(progressCallback);
+  req.on('error', (error: Error & { code?: string }) => {
+    // Handle different types of connection errors more gracefully
+    if (error.code === 'ECONNRESET') {
+      console.log(
+        'Progress connection reset by client (normal browser close/navigation)',
+      );
+    } else if (error.code === 'EPIPE') {
+      console.log('Progress connection broken pipe (client disconnected)');
+    } else {
+      console.log('Progress connection error:', error.message ?? error);
+    }
+
+    progressService.removeCallback(progressCallback);
     clearTimeout(timeout);
+    clearInterval(heartbeat);
+
+    // Only reset if no more active connections
+    if (progressService.getCallBackCount() === 0) {
+      progressService.reset();
+    }
+
     if (!res.destroyed) {
       res.end();
     }

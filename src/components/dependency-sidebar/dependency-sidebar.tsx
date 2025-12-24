@@ -145,10 +145,6 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
     }
     setIsLoading(true);
     setError(null);
-    toast.dismiss();
-    toast.loading("Generating AI Summary...", {
-      duration:1500,
-    });
     const vulnerabilities = {
       name: allDetails?.name,
       version: allDetails?.version,
@@ -177,7 +173,6 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
       );
     } catch (err) {
       setError("Failed to fetch AI summary: " + (err as Error).message);
-    } finally {
       setIsLoading(false);
     }
   }, [allDetails]);
@@ -313,7 +308,13 @@ const DependencyDetailsCard = (props: DependencyDetailsProps) => {
                       <RefreshCcw
                         size={24}
                         className="cursor-pointer bg-background rounded-sm"
-                        onClick={fetchSummary}
+                        onClick={() => {
+                          fetchSummary();
+                          toast.dismiss();
+                          toast.loading("Generating AI Summary...", {
+                            duration: 1500,
+                          });
+                        }}
                       />
                     </TooltipTrigger>
                     <TooltipContent>Refresh AI Response</TooltipContent>

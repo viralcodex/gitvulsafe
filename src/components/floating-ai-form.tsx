@@ -9,8 +9,7 @@ import React, { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 
 const FloatingAiForm = () => {
-  const { selectedText, setSelectedText, mousePosition, selectedDependency } =
-    useTextSelection();
+  const { selectedText, setSelectedText, mousePosition, selectedDependency } = useTextSelection();
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -66,8 +65,8 @@ const FloatingAiForm = () => {
     function handleEscapeKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setShowForm(false);
-        setSelectedText("");
-        setPrompt("");
+        // setSelectedText("");
+        // setPrompt("");
         if (window.getSelection) {
           window.getSelection()?.removeAllRanges();
         }
@@ -150,7 +149,7 @@ const FloatingAiForm = () => {
     return {
       top,
       left,
-      display: "block",
+      display: "inline-flex",
       zIndex: 9999,
     };
   };
@@ -246,7 +245,7 @@ const FloatingAiForm = () => {
       ref={formRef}
       style={style}
       className={cn(
-        "opacity-70 z-9999 hover:opacity-100 fixed bg-sidebar-accent-foreground p-2 shadow-[2px_2px_10px_rgba(0,0,0,0.80)] max-w-[300px] rounded-sm border-1 border-accent"
+        "opacity-70 z-9999 hover:opacity-100 fixed bg-sidebar-accent-foreground p-2 shadow-[2px_2px_10px_rgba(0,0,0,0.80)] w-[350px] rounded-sm border-1 border-accent"
       )}
       onMouseDown={(e) => {
         e.stopPropagation();
@@ -261,14 +260,9 @@ const FloatingAiForm = () => {
         setTimeout(() => setIsFormActive(false), 150);
       }}
     >
-      {response && mousePosition.y > window.innerHeight / 2 && (
-        <div className="py-3 px-3 absolute border-x-1 border-t-1 bottom-full left-0 z-9999 bg-accent-foreground shadow-[2px_2px_10px_rgba(0,0,0,0.80)] rounded-t-sm text-sm wrap-normal overflow-y-auto max-h-[200px] scrollbar-background-thumb scrollbar-background-bg-2">
-          {parseResponse(response)}
-        </div>
-      )}
       <div className="relative w-full bg-sidebar-accent-foreground">
         <form onSubmit={handleSubmit}>
-          <div className="flex flex-row items-center justify-between gap-x-2 w-full">
+          <div className="flex flex-row items-center justify-center gap-x-2 w-full">
             <input
               type="text"
               value={prompt}
@@ -279,7 +273,7 @@ const FloatingAiForm = () => {
               placeholder="Ask anything..."
               className={cn(
                 error ? "border-2 border-red-500" : "border-1",
-                "p-3.5 rounded w-[80%] text-accent text-sm"
+                "p-3.5 rounded w-4/5 text-accent text-sm"
               )}
               autoFocus
             />
@@ -287,13 +281,13 @@ const FloatingAiForm = () => {
               disabled={loading || !prompt.trim()}
               type="submit"
               className={cn(
-                "flex flex-row items-center border-1 border-accent justify-center bg-accent-foreground rounded w-[20%] transition cursor-pointer",
+                "flex flex-row items-center justify-center bg-accent-foreground rounded w-1/6 transition cursor-pointer",
                 !prompt.trim() && "opacity-50 cursor-not-allowed"
               )}
             >
               {loading ? (
                 <LoaderCircle
-                  className="animate-spin text-white my-3"
+                  className="animate-spin text-white my-3 mx-3"
                   size={24}
                   strokeWidth={3}
                 />
@@ -302,20 +296,25 @@ const FloatingAiForm = () => {
                   priority
                   src="/genaibutton.svg"
                   alt="Generate Fix Plan"
-                  width={52}
-                  height={52}
+                  width={60}
+                  height={60}
                   className=""
                 />
               )}
             </button>
           </div>
         </form>
-        {response && mousePosition.y <= window.innerHeight / 2 && (
-          <div className="-mx-2 py-3 px-3 mt-1 absolute border-x-1 border-b-1 top-full left-0 z-9999 bg-accent-foreground rounded-b-sm text-sm wrap-normal overflow-y-auto max-h-[200px] scrollbar-background-bg scrollbar-background-thumb scrollbar-background-bg-2">
-            {parseResponse(response)}
-          </div>
-        )}
       </div>
+      {response && (
+        <div className={cn(
+          mousePosition.y < window.innerHeight / 2 
+            ? "top-full border-x-1 border-b-1 rounded-b-sm rounded-t-none" 
+            : "bottom-full border-x-1 border-t-1 rounded-t-sm rounded-b-none",
+          "w-full py-3 px-3 absolute left-0 z-9999 bg-accent-foreground text-sm wrap-normal overflow-y-auto max-h-[200px] scrollbar-background-thumb scrollbar-background-bg-2"
+        )}>
+          {parseResponse(response)}
+        </div>
+      )}
     </div>
   );
 };

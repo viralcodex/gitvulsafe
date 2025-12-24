@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import TopHeaderGithub from "../../../components/top-header-github";
 import DepDiagram from "@/components/dependency-diagram";
-import { GraphNode, GroupedDependencies, SSEMessage } from "@/constants/model";
+import { GraphNode, GroupedDependencies, FixPlanSSEMessage, GlobalFixPlanSSEMessage, FixOptimisationPlanSSEMessage, ConflictResolutionPlanSSEMessage, StrategyRecommendationSSEMessage } from "@/constants/model";
 import TopHeaderFile from "@/components/top-header-file";
 import DependencyDetailsCard from "@/components/dependency-sidebar/dependency-sidebar";
 import {
@@ -18,9 +18,13 @@ import { getFixPlanSSE, uploadFile } from "@/lib/api";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { Dropdown } from "@/components/ui/dropdown";
-import FixPlanCard from "@/components/fix-plan-card";
+import FixPlanCard from "@/components/fix-plan/fix-plan-card";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useRepoBranch } from "@/providers/repoBranchProvider";
+import { TextSelectionProvider } from "@/providers/textSelectionProvider";
+import FloatingAiForm from "@/components/floating-ai-form";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import SavedHistory from "@/components/saved-history";
 
 const Page = () => {
   const params = useParams<{ username: string; repo: string }>();
@@ -41,9 +45,13 @@ const Page = () => {
   const [newFileName, setNewFileName] = useState<string>("");
   const [isFixPlanLoading, setIsFixPlanLoading] = useState<boolean>(false);
   const [fixPlan, setFixPlan] = useState<Record<string, string>>({});
+  const [globalFixPlan, setGlobalFixPlan] = useState<string>("");
+  const [fixOptimizationPlan, setFixOptimizationPlan] = useState<string>("");
+  const [conflictResolutionPlan, setConflictResolutionPlan] = useState<string>("");
+  const [strategyPlan, setStrategyPlan] = useState<string>("");
   const [isFixPlanDialogOpen, setFixPlanDialogOpen] = useState<boolean>(false);
   const [isFixPlanComplete, setFixPlanComplete] = useState<boolean>(false);
-  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [forceRefresh, setForceRefresh] = useState<boolean>(false);
   const fixPlanRef = useRef<HTMLDivElement>(null);
   
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -61,13 +69,13 @@ const Page = () => {
     loading,
     setLoading,
   } = useGraph(
-    refreshTrigger,
     setError,
     setManifestError,
     username,
     repo,
     branch,
-    file
+    file,
+    forceRefresh
   );
 
   const {
@@ -149,10 +157,11 @@ const Page = () => {
       setInputFile(null);
       setUploaded(false);
       setNewFileName(file);
+      setCurrentUrl(""); // Clear URL to reset branches when in file mode
     } else {
       setFileHeaderOpen(false);
     }
-  }, [file, setFileHeaderOpen, setInputUrl]);
+  }, [file, setFileHeaderOpen, setInputUrl, setCurrentUrl]);
 
   // Handle window resize
   useEffect(() => {
@@ -187,7 +196,7 @@ const Page = () => {
     setIsDiagramExpanded(false);
   }, [username, repo, branch, file]);
 
-  const onMessage = useCallback((message: SSEMessage) => {
+  const onMessage = useCallback((message: FixPlanSSEMessage) => {
     if (
       message &&
       message.dependencyName &&
@@ -243,6 +252,58 @@ const Page = () => {
     setIsFixPlanLoading(false);
   }, [setFixPlanComplete, setIsFixPlanLoading]);
 
+  const onGlobalFixPlanMessage = useCallback((message: GlobalFixPlanSSEMessage) => {
+    if (message && message.globalFixPlan) {
+      const globalPlan =
+        typeof message.globalFixPlan === "object"
+          ? JSON.stringify(message.globalFixPlan, null, 2)
+          : String(message.globalFixPlan);
+
+      setGlobalFixPlan(globalPlan);
+    } else {
+      console.warn("Invalid global fix plan message structure received:", message);
+    }
+  }, []);
+
+  const onFixOptimizationMessage = useCallback((message: FixOptimisationPlanSSEMessage) => {
+    if (message && message.optimisedPlan) {
+      const fixOptPlan =
+        typeof message.optimisedPlan === "object"
+          ? JSON.stringify(message.optimisedPlan, null, 2)
+          : String(message.optimisedPlan);
+
+      setFixOptimizationPlan(fixOptPlan);
+    } else {
+      console.warn("Invalid fix optimization plan message structure received:", message);
+    }
+  }, []);
+
+  const onConflictResolutionMessage = useCallback((message: ConflictResolutionPlanSSEMessage) => {
+    if (message && message.conflictResolutionPlan) {
+      const conflictPlan =
+        typeof message.conflictResolutionPlan === "object"
+          ? JSON.stringify(message.conflictResolutionPlan, null, 2)
+          : String(message.conflictResolutionPlan);
+
+      setConflictResolutionPlan(conflictPlan);
+    } else {
+      console.warn("Invalid conflict resolution plan message structure received:", message);
+    }
+  }, []);
+
+  const onStrategyRecommendationMessage = useCallback((message: StrategyRecommendationSSEMessage) => {
+    if (message && message.finalStrategy) {
+      const strategyRec =
+        typeof message.finalStrategy === "object"
+          ? JSON.stringify(message.finalStrategy, null, 2)
+          : String(message.finalStrategy);
+
+      setStrategyPlan(strategyRec);
+    } else {
+      console.warn("Invalid strategy recommendation message structure received:", message);
+    }
+  }, []);
+
   const generateFixPlan = useCallback(
     async (regenerateFixPlan: boolean = false) => {
       if (!graphData || Object.keys(graphData).length === 0) {
@@ -259,6 +320,10 @@ const Page = () => {
       setIsFixPlanLoading(true);
       setError("");
       setFixPlan({});
+      setGlobalFixPlan("");
+      setFixOptimizationPlan("");
+      setConflictResolutionPlan("");
+      setStrategyPlan("");
       try {
         await getFixPlanSSE(
           username,
@@ -266,7 +331,11 @@ const Page = () => {
           selectedBranch ?? branch,
           onMessage,
           onError,
-          onComplete
+          onComplete,
+          onGlobalFixPlanMessage,
+          onFixOptimizationMessage,
+          onConflictResolutionMessage,
+          onStrategyRecommendationMessage
         );
       } catch (error) {
         console.error("Error generating fix plan:", error);
@@ -277,7 +346,11 @@ const Page = () => {
         toast.error(errorMessage);
         setError(errorMessage);
         setIsFixPlanLoading(false);
-        setFixPlan({});
+         setFixPlan({});
+         setGlobalFixPlan("");
+         setFixOptimizationPlan("");
+         setConflictResolutionPlan("");
+         setStrategyPlan("");
       }
     },
     [
@@ -291,6 +364,10 @@ const Page = () => {
       onMessage,
       onError,
       onComplete,
+      onGlobalFixPlanMessage,
+      onFixOptimizationMessage,
+      onConflictResolutionMessage,
+      onStrategyRecommendationMessage,
     ]
   );
 
@@ -346,7 +423,7 @@ const Page = () => {
           })
           .catch((err) => {
             // console.error("Error uploading file:", err);
-            setError("Failed to upload file. Please try again later. " + err);
+            setError(err);
             setUploaded(false);
             toast.error("Failed to upload file. Please try again later.");
           });
@@ -373,9 +450,12 @@ const Page = () => {
     return () => clearTimeout(handler);
   }, [inputUrl, setBranchError, setCurrentUrl]);
 
-  const handleRefresh = () => {
-    setRefreshTrigger((prev) => prev + 1);
-  };
+  const handleRefresh = useCallback(() => {
+    // Set forceRefresh flag and increment trigger
+    setForceRefresh(true);
+    // Reset forceRefresh after a short delay to ensure it's used for this fetch only
+    setTimeout(() => setForceRefresh(false), 100);
+  }, []);
 
   const resetGraph = () => {
     setGraphData({});
@@ -398,7 +478,11 @@ const Page = () => {
             await downloadFixPlanPDF(fixPlanRef);
           }}
           fixPlanRef={fixPlanRef}
-          content={fixPlan}
+          fixPlan={fixPlan}
+          optimisationPlan={fixOptimizationPlan}
+          globalFixPlan={globalFixPlan}
+          conflictResolutionPlan={conflictResolutionPlan}
+          strategyPlan={strategyPlan}
           manifestData={manifestData}
           setManifestData={setManifestData}
           regenerateFixPlan={generateFixPlan}
@@ -426,6 +510,7 @@ const Page = () => {
           /> 
         </SidebarProvider>
         */}
+        <SavedHistory />
         {fileHeaderOpen ? (
           <TopHeaderFile
             file={parseFileName(newFileName)}
@@ -491,20 +576,34 @@ const Page = () => {
               />
             </div>
           )}
-          <div
-            onClick={() => generateFixPlan(false)}
-            className="cursor-pointer gap-x-2 w-[45%] sm:w-[200px] flex flex-row items-center justify-center bg-background py-3 border-1 border-accent rounded-md"
-          >
-            <Image
-              priority
-              className="text-accent"
-              src="/genai.svg"
-              alt="Generate Fix Plan"
-              width={28}
-              height={28}
-            />
-            <p className="sm:text-md text-sm">Generate Fix Plan</p>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger
+                asChild
+                id="generate-fix-plan"
+                className="bg-accent-foreground"
+              >
+                <div
+                  onClick={() => generateFixPlan(false)}
+                  className="cursor-pointer gap-x-2 w-[45%] sm:w-[200px] flex flex-row items-center justify-center bg-background py-3 border-1 border-accent rounded-md"
+                >
+                  <Image
+                    priority
+                    className="text-accent"
+                    src="/genai.svg"
+                    alt="Generate Fix Plan"
+                    width={28}
+                    height={28}
+                  />
+                  <p className="sm:text-md text-sm">Generate Fix Plan</p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={-8} className="bg-background/80 text-accent text-xs px-2 py-1 rounded-md transition-all ease-in duration-300">
+                <p className="font-semibold">Fix plan may take several seconds depending on the size of project.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <DepDiagram
           svgRef={svgRef}
@@ -539,4 +638,13 @@ const Page = () => {
   );
 };
 
-export default Page;
+const PageContent = () => {
+  return (
+    <TextSelectionProvider>
+      <Page />
+      <FloatingAiForm />
+    </TextSelectionProvider>
+  );
+}
+
+export default PageContent;

@@ -118,11 +118,85 @@ export interface ShowMoreDescProps {
   [key: string]: boolean;
 }
 
-export interface SSEMessage {
+export interface FixPlanSSEMessage {
   dependencyName?: string;
   dependencyVersion?: string;
   fixPlan?: Record<string, unknown>;
   progress?: string;
+}
+
+export interface GlobalFixPlanSSEMessage {
+  globalFixPlan?: string;
+  progress?: string;
+}
+
+export interface FixOptimisationPlanSSEMessage {
+  optimisedPlan?: string;
+  progress?: string;
+}
+
+export interface ConflictResolutionPlanSSEMessage {
+  conflictResolutionPlan?: string;
+  progress?: string;
+}
+
+export interface StrategyRecommendationSSEMessage {
+  finalStrategy?: string;
+  progress?: string;
+}
+
+// Global Fix Plan Data Structures
+export interface GlobalAnalysisData {
+  analysis?: {
+    summary?: string;
+    dependency_relationships?: string[];
+    shared_vulnerabilities?: string[];
+    critical_path_analysis?: { path: string; description: string }[];
+  };
+  prioritization?: {
+    strategy?: string;
+    execution_phases?: string[];
+  };
+  execution_plan?: {
+    batch_operations?: string[];
+    sequential_requirements?: string;
+    global_commands?: string[];
+  };
+  risk_management?: {
+    assessment?: string;
+    breaking_change_analysis?: string;
+    testing_strategy?: {
+      unit_tests?: string;
+      integration_tests?: string;
+    };
+    rollback_plan?: string;
+  };
+}
+
+export interface OptimisationData {
+  optimization_analysis?: {
+    summary?: string;
+    redundancies_found?: Array<{ type: string; description: string }>;
+    batch_opportunities?: Array<{ name: string; description: string }>;
+  };
+  execution_optimization?: {
+    strategy?: string;
+    consolidated_commands?: Array<{ command: string; description: string }>;
+  };
+}
+
+export interface ConflictResolutionData {
+  analysis?: {
+    conflicts_summary?: string;
+    critical_conflicts?: Array<{ dependency: string; description: string }>;
+    version_conflicts?: Array<{ package: string; description: string }>;
+    breaking_changes?: string;
+  };
+  resolution?: {
+    approach?: string;
+    primary_strategy?: string;
+    backup_strategies?: Array<{ name: string; description: string }>;
+  };
 }
 
 export interface VulnerabilityFix {
@@ -168,6 +242,7 @@ export interface VulnerabilityFix {
 export interface ProgressSSE {
     step: string;
     progress: number;
+    progressNumber?: number;
     message?: string;
     type: string;
 }

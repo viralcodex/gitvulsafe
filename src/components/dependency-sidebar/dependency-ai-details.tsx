@@ -3,8 +3,9 @@ import { cn, getRemediationPriorityConfig } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 import * as LucideIcons from "lucide-react";
 import { Progress } from "../ui/progress";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PROGRESS_MESSAGES } from "@/constants/constants";
+import { AlertTriangle } from "lucide-react";
 
 interface DependencyAIDetailsProps {
   dependency: Dependency | undefined;
@@ -36,13 +37,22 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
   const [dots, setDots] = useState<string>("");
   const [timeElapsed, setTimeElapsed] = useState<number>(0);
   const [message, setMessage] = useState<string>("Finalizing summary");
-
+  const count = useRef(0);
+  const cyclingStarted = useRef(false);
+  const intervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  
   useEffect(() => {
     if (isLoading) {
       setFinalised(false);
       setProgress(0);
-      setMessage("");
+      setMessage("Finalizing summary");
       setTimeElapsed(0);
+      count.current = 0;
+      cyclingStarted.current = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
+      }
 
       const getRandomValueInRange = (min: number, max: number) => {
         return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -72,7 +82,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
   }, [isLoading]);
 
   useEffect(() => {
-    if (summary && !isLoading) {
+    if (summary) {
       setProgress(100);
       const timer = setTimeout(() => {
         setFinalised(true);
@@ -82,7 +92,7 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
         clearTimeout(timer);
       };
     }
-  }, [summary, isLoading]);
+  }, [summary]);
 
   useEffect(() => {
     const interval = setTimeout(() => {
@@ -111,17 +121,22 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
     }
   }, [finalised, progress]);
 
+  //cycle messages after reaching 90% progress (when generation taking longer than 3 second)
   useEffect(() => {
-    let count = 0;
-    let interval: NodeJS.Timeout;
-    if (timeElapsed >= 1000 && progress >= 90 && !finalised) {
-      interval = setInterval(() => {
-        setMessage(PROGRESS_MESSAGES[count % PROGRESS_MESSAGES.length]);
-        count++;
-      }, 1000);
+    if (progress >= 90 && !finalised && timeElapsed >= 2000 && !cyclingStarted.current) {
+      cyclingStarted.current = true;
+      setMessage(PROGRESS_MESSAGES[count.current % PROGRESS_MESSAGES.length]);
+      count.current++;
+      intervalRef.current = setInterval(() => {
+        setMessage(PROGRESS_MESSAGES[count.current % PROGRESS_MESSAGES.length]);
+        count.current++;
+      }, 2000);
     }
     return () => {
-      if (interval) clearInterval(interval);
+      if (finalised && intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
+      }
     };
   }, [progress, timeElapsed, finalised]);
 
@@ -269,18 +284,17 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
     <div className="px-4 h-full w-full">
       {!finalised ? (
         <div className="flex flex-col items-center justify-center h-full">
-          <Progress value={progress} className="my-2 max-w-[75%]"/>
+          <Progress value={progress} className="my-2 max-w-[75%]" />
           <div className="flex flex-row items-center text-sm">
-            <span>
-              {progress < 90
-                ? "Generating AI Summary"
-                : (message || "Finalizing summary")}
-            </span>
+            <span>{progress < 90 ? "Generating AI Summary" : message}</span>
             <span className="inline-block w-4 text-left">{dots}</span>
           </div>
         </div>
       ) : error ? (
-        <div className="text-red-500 text-center">{error}</div>
+        <div className="text-red-500 text-center h-full flex flex-col items-center justify-center gap-4">
+          <AlertTriangle size={96} />
+          {error}
+        </div>
       ) : (
         <div>
           <div className="mb-4">

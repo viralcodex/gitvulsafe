@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "properties": {
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "dependency_relationships": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "shared_vulnerabilities": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "critical_path_analysis": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string", "description": "A sequence of dependencies representing a critical path. Dependency A -> Dependency B -> Dependency C etc." },
+              "description": { "type": "string" }
+            }
+          },
+          "description": "critical paths of dependencies that must be addressed in sequence to ensure a successful global fix plan."
+        }
+      }
+    },
+    "prioritization": {
+      "type": "object",
+      "properties": {
+        "strategy": { "type": "string" },
+        "execution_phases": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "execution_plan": {
+      "type": "object",
+      "properties": {
+        "batch_operations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Commands should be wrapped in <code></code> tags."
+        },
+        "sequential_requirements": { "type": "string" },
+        "global_commands": {
+          "type": "array", 
+          "items": { "type": "string" },
+          "description": "Commands should be wrapped in <code></code> tags."
+        }
+      }
+    },
+    "risk_management": {
+      "type": "object",
+      "properties": {
+        "assessment": { "type": "string" },
+        "breaking_change_analysis": { "type": "string" },
+        "testing_strategy": {
+          "type": "object",
+          "properties": {
+            "unit_tests": { "type": "string" },
+            "integration_tests": { "type": "string" },
+            "regression_tests": { "type": "string" },
+            "manual_verification": { "type": "string" }
+          }
+        },
+        "rollback_plan": { "type": "string" }
+      }
+    }
+  },
+  "required": ["analysis", "prioritization", "execution_plan", "risk_management"]
+}
