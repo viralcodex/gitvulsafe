@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/header";
@@ -10,19 +10,35 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin", "latin-ext"],
-  display: "auto", // Improves font loading performance
+  display: "swap",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "GitVulSafe",
-  description: "A tool for analysing dependencies for security vulnerabilities",
+  title: "GitVulSafe - Dependency Vulnerability Scanner & Security Analysis Tool",
+  description: "Visualize, detect and fix dependency vulnerabilities in your codebase with AI-powered insights. Analyze GitHub repositories and manifest files for security risks across npm, pip, Maven, and more. Free open-source dependency scanner.",
   openGraph: {
-    title: "GitVulSafe",
+    title: "GitVulSafe - Dependency Vulnerability Scanner & Security Analysis Tool",
     description:
-      "A tool for analysing dependencies for security vulnerabilities",
+      "Visualize, detect and fix dependency vulnerabilities in your codebase with AI-powered insights. Analyze GitHub repositories and manifest files for security risks across npm, pip, Maven, and more.",
     url: "https://GitVulSafe.com",
     siteName: "GitVulSafe",
+    type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "GitVulSafe - Dependency Vulnerability Scanner",
+    description: "Visualize, detect and fix dependency vulnerabilities in your codebase with AI-powered insights.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  metadataBase: new URL("https://GitVulSafe.com"),
   keywords: [
     "dependency analysis",
     "security vulnerabilities",
@@ -55,8 +71,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} `}>
       <head>
-        <link rel="preload" href="/bg.svg" as="image" type="image/svg+xml" />
-        <link rel="preload" href="/file.svg" as="image" type="image/svg+xml" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
       </head>
       <body className="flex h-screen flex-col bg-background bg-repeat bg-[size:300px_300px] bg-[url('/bg.svg')] bg-blend-multiply relative">
         <SpeedInsights/>

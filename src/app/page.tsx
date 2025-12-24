@@ -1,6 +1,17 @@
 import Banner from "@/components/banner";
 import MainContent from "@/components/main-content";
 import Image from "next/image";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "GitVulSafe - Free Dependency Vulnerability Scanner for GitHub & Manifest Files",
+  description: "Scan your GitHub repositories and manifest files for security vulnerabilities. Visualize dependency graphs, get AI-powered fix recommendations, and secure your code. Supports npm, pip, Maven, Gradle, and more. 100% free and open-source.",
+  openGraph: {
+    title: "GitVulSafe - Free Dependency Vulnerability Scanner",
+    description: "Scan GitHub repositories and manifest files for security vulnerabilities with AI-powered insights. Free and open-source.",
+    type: "website",
+  },
+};
 
 export default function Home() {
   return (

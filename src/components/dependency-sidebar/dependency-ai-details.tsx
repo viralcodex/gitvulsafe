@@ -1,11 +1,16 @@
 import { Dependency } from "@/constants/model";
 import { cn, getRemediationPriorityConfig } from "@/lib/utils";
 import { Badge } from "../ui/badge";
-import * as LucideIcons from "lucide-react";
+import { 
+  AlertTriangle, 
+  LightbulbIcon as LightBulb,
+  MinusCircle,
+  Siren,
+  type LucideIcon 
+} from "lucide-react";
 import { Progress } from "../ui/progress";
 import { useEffect, useRef, useState } from "react";
 import { PROGRESS_MESSAGES } from "@/constants/constants";
-import { AlertTriangle } from "lucide-react";
 
 interface DependencyAIDetailsProps {
   dependency: Dependency | undefined;
@@ -150,12 +155,15 @@ const DependencyAIDetails = (props: DependencyAIDetailsProps) => {
 
   const parsedSummary = summary ? JSON.parse(summary) : null;
 
+  const iconMap: Record<string, LucideIcon> = {
+    Siren,
+    AlertTriangle,
+    MinusCircle,
+    LightBulb,
+  };
+
   const getIconComponent = (iconName: string) => {
-    const IconComponent = iconName
-      ? (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[
-          iconName
-        ]
-      : null;
+    const IconComponent = iconMap[iconName] || null;
 
     return IconComponent ? (
       <IconComponent className="h-8 w-8" size={24} strokeWidth={3} />

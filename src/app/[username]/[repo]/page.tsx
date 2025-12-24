@@ -3,11 +3,11 @@
 import { useGraph } from "@/hooks/useGraph";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import TopHeaderGithub from "../../../components/top-header-github";
 import DepDiagram from "@/components/dependency-diagram";
 import { GraphNode, GroupedDependencies, FixPlanSSEMessage, GlobalFixPlanSSEMessage, FixOptimisationPlanSSEMessage, ConflictResolutionPlanSSEMessage, StrategyRecommendationSSEMessage } from "@/constants/model";
 import TopHeaderFile from "@/components/top-header-file";
-import DependencyDetailsCard from "@/components/dependency-sidebar/dependency-sidebar";
 import {
   downloadFixPlanPDF,
   parseFileName,
@@ -18,13 +18,25 @@ import { getFixPlanSSE, uploadFile } from "@/lib/api";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { Dropdown } from "@/components/ui/dropdown";
-import FixPlanCard from "@/components/fix-plan/fix-plan-card";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useRepoBranch } from "@/providers/repoBranchProvider";
 import { TextSelectionProvider } from "@/providers/textSelectionProvider";
-import FloatingAiForm from "@/components/floating-ai-form";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import SavedHistory from "@/components/saved-history";
+
+// Lazy load heavy components to improve initial load time
+const DependencyDetailsCard = dynamic(
+  () => import("@/components/dependency-sidebar/dependency-sidebar"),
+  { ssr: false }
+);
+const FloatingAiForm = dynamic(
+  () => import("@/components/floating-ai-form"),
+  { ssr: false }
+);
+const FixPlanCard = dynamic(
+  () => import("@/components/fix-plan/fix-plan-card"),
+  { ssr: false }
+);
 
 const Page = () => {
   const params = useParams<{ username: string; repo: string }>();
@@ -583,7 +595,9 @@ const Page = () => {
                 id="generate-fix-plan"
                 className="bg-accent-foreground"
               >
-                <div
+                <button
+                  aria-label="Generate AI Fix Plan"
+                  role="button"
                   onClick={() => generateFixPlan(false)}
                   className="cursor-pointer gap-x-2 w-[45%] sm:w-[200px] flex flex-row items-center justify-center bg-background py-3 border-1 border-accent rounded-md"
                 >
@@ -591,16 +605,15 @@ const Page = () => {
                     priority
                     className="text-accent"
                     src="/genai.svg"
-                    alt="Generate Fix Plan"
+                    alt="Sparkle Image"
                     width={28}
                     height={28}
                   />
                   <p className="sm:text-md text-sm">Generate Fix Plan</p>
-                </div>
+                </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={-8} className="bg-background/80 text-accent text-xs px-2 py-1 rounded-md transition-all ease-in duration-300">
-                <p className="font-semibold">Fix plan may take several seconds depending on the size of project.
-                </p>
+                <p className="font-semibold">Fix plan may take several seconds depending on the size of project.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

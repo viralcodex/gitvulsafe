@@ -71,6 +71,7 @@ const TopHeaderFile = (props: TopHeaderFileProps) => {
           ? "hidden"
           : "w-full flex flex-col items-center justify-center"
       )}
+      aria-label="File analysis form"
     >
       <div className="flex flex-col items-center justify-center px-4 pt-4 w-full">
         <Card className="relative max-h-[200px] bg-background sm:max-w-[700px] w-full border-2 border-accent mx-auto mt-4 flex justify-between p-4 gap-4 sm:flex-row flex-col">
@@ -83,18 +84,20 @@ const TopHeaderFile = (props: TopHeaderFileProps) => {
                 setInputFile(e.target.files?.[0] || null);
                 setError("");
               }}
+              aria-label="Upload manifest file for analysis"
             />
           </div>
-          <div className="border-1 rounded-md text-accent text-md flex flex-col items-center justify-center sm:w-[42%] w-full p-2">
+          <div className="border-1 rounded-md text-accent text-md flex flex-col items-center justify-center sm:w-[42%] w-full p-2" role="status" aria-label="Current file">
             <span className="">{file}</span>
           </div>
           <Button
             className="sm:h-13 sm:w-15 bg-muted-foreground disabled:bg-muted-foreground disabled:opacity-80 hover:bg-input text-sm cursor-pointer"
             type="submit"
             disabled={isLoading || !uploaded || !inputFile}
+            aria-label="Analyse uploaded file"
           >
             {isLoading ? (
-              <LucideLoader2 className="animate-spin" strokeWidth={3} />
+              <LucideLoader2 className="animate-spin" strokeWidth={3} aria-hidden="true" />
             ) : (
               <span className="flex flex-row items-center justify-center">
                 <span className="sm:hidden">Analyse</span>

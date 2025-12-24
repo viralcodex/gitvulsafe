@@ -786,6 +786,7 @@ const DepDiagram = ({
           <div
             className="flex flex-col items-center justify-center h-full"
             style={{ width: windowSize.width, height: windowSize.height / 2 }}
+            aria-label="loading-diagram"
           >
             <DiagramProgress />
           </div>

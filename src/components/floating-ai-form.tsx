@@ -259,9 +259,12 @@ const FloatingAiForm = () => {
       onMouseLeave={() => {
         setTimeout(() => setIsFormActive(false), 150);
       }}
+      role="dialog"
+      aria-label="AI assistance for selected text"
+      aria-modal="false"
     >
       <div className="relative w-full bg-sidebar-accent-foreground">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-label="AI query form">
           <div className="flex flex-row items-center justify-center gap-x-2 w-full">
             <input
               type="text"
@@ -276,6 +279,9 @@ const FloatingAiForm = () => {
                 "p-3.5 rounded w-4/5 text-accent text-sm"
               )}
               autoFocus
+              aria-label="AI prompt"
+              aria-describedby={error ? "ai-form-error" : undefined}
+              aria-invalid={!!error}
             />
             <button
               disabled={loading || !prompt.trim()}
@@ -284,18 +290,20 @@ const FloatingAiForm = () => {
                 "flex flex-row items-center justify-center bg-accent-foreground rounded w-1/6 transition cursor-pointer",
                 !prompt.trim() && "opacity-50 cursor-not-allowed"
               )}
+              aria-label="Submit AI query"
             >
               {loading ? (
                 <LoaderCircle
                   className="animate-spin text-white my-3 mx-3"
                   size={24}
                   strokeWidth={3}
+                  aria-hidden="true"
                 />
               ) : (
                 <Image
                   priority
                   src="/genaibutton.svg"
-                  alt="Generate Fix Plan"
+                  alt="Generate AI response"
                   width={60}
                   height={60}
                   className=""
@@ -311,7 +319,11 @@ const FloatingAiForm = () => {
             ? "top-full border-x-1 border-b-1 rounded-b-sm rounded-t-none" 
             : "bottom-full border-x-1 border-t-1 rounded-t-sm rounded-b-none",
           "w-full py-3 px-3 absolute left-0 z-9999 bg-accent-foreground text-sm wrap-normal overflow-y-auto max-h-[200px] scrollbar-background-thumb scrollbar-background-bg-2"
-        )}>
+        )}
+        role="region"
+        aria-live="polite"
+        aria-label="AI response"
+        >
           {parseResponse(response)}
         </div>
       )}

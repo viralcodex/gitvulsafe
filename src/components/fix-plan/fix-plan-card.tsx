@@ -6,8 +6,7 @@ import {
   RefObject,
 } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
-import { Download, RefreshCcw, X } from "lucide-react";
-import * as LucideIcons from "lucide-react";
+import { Download, RefreshCcw, X, Eye, EyeOff } from "lucide-react";
 import { cn, depVulnCount } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ManifestFileContentsApiResponse } from "@/constants/model";
@@ -145,11 +144,11 @@ const FixPlanCard = (props: FixPlanCardProps) => {
                 <TooltipTrigger asChild id="expand-collapse-all">
                   <button onClick={() => expandCollapseAll(!isExpandedAll)}>
                     {isExpandedAll ? (
-                      <LucideIcons.EyeOff
+                      <EyeOff
                         className={cn("text-muted-foreground cursor-pointer")}
                       />
                     ) : (
-                      <LucideIcons.Eye
+                      <Eye
                         className={cn("text-muted-foreground cursor-pointer")}
                       />
                     )}

@@ -50,19 +50,19 @@ const DiagramProgress = () => {
   },[currentStep]); 
 
   return (
-    <div className="space-y-2 sm:w-[25%] w-[75%]">
-      <Progress value={progress} className="w-full border-1 h-4" />
-      <div className="text-sm text-muted-foreground px-1 xl:text-lg">
+    <div className="space-y-2 sm:w-[25%] w-[75%]" role="region" aria-label="Analysis progress">
+      <Progress value={progress} className="w-full border-1 h-4" aria-label="Progress bar" />
+      <div className="text-sm text-muted-foreground px-1 xl:text-lg" aria-live="polite" aria-atomic="true">
         <div className="flex flex-row items-center text-sm">
-          <span>
+          <span aria-label={`Current step: ${currentStep}`}>
             {currentStep}
           </span>
-          <span className="inline-block w-4 text-left">
+          <span className="inline-block w-4 text-left" aria-hidden="true">
             {dots}
           </span>
         </div>
         <div className="flex justify-between items-center text-sm">
-          <span className="">{progress}%</span>
+          <span className="" aria-label={`Progress: ${progress} percent complete`}>{progress}%</span>
         </div>
       </div>
     </div>
