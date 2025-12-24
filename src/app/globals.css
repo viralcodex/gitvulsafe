@@ -125,6 +125,7 @@
 .scrollbar-background-thumb::-webkit-scrollbar-thumb {
   background: var(--primary);
   border-radius: 20px;
+  
 }
 
 .scrollbar-background-hidden::-webkit-scrollbar{
