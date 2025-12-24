@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { Dependency, GraphNode, Vulnerability } from "@/constants/model";
 import removeMarkdown from "remove-markdown";

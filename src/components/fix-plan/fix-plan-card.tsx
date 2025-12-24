@@ -13,7 +13,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ManifestFileContentsApiResponse } from "@/constants/model";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import StrategyPlan from "./strategy-plan";
 import GlobalFixPlan from "./global-fix-plan";
 import IndividualFixPlan from "./indv-fix-plan";
 
@@ -47,7 +46,6 @@ const FixPlanCard = (props: FixPlanCardProps) => {
     globalFixPlan,
     optimisationPlan,
     conflictResolutionPlan,
-    strategyPlan,
     manifestData,
     regenerateFixPlan,
     fixPlanError,
