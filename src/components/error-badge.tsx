@@ -23,17 +23,26 @@ const ErrorBadge = (props: ErrorBadgeProps) => {
       : "2rem";
 
   return (
-    <div
+    <button
       className={cn(
-        "absolute bottom-4 flex flex-col justify-end px-4 cursor-pointer z-100",
+        "absolute bottom-4 flex flex-col justify-end px-4 cursor-pointer z-100 border-none bg-transparent",
         isMobile ? "w-[70%]" : "w-fit max-w-[75%]"
       )}
       onMouseEnter={() => setErrorClicked(true)}
       onMouseLeave={() => setErrorClicked(false)}
       onClick={() => setErrorClicked(!errorClicked)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setErrorClicked(!errorClicked);
+        }
+      }}
       style={{
         height: errorClicked && hasMultipleErrors ? badgeHeight : "2rem",
       }}
+      aria-label={`${errorMsgs.length} error${errorMsgs.length > 1 ? 's' : ''} found. Click to ${errorClicked ? 'collapse' : 'expand'}`}
+      aria-expanded={errorClicked}
+      role=""
     >
       <Badge
         className={cn(
@@ -92,7 +101,7 @@ const ErrorBadge = (props: ErrorBadgeProps) => {
           })}
         </div>
       </Badge>
-    </div>
+    </button>
   );
 };
 

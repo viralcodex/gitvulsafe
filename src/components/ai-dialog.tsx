@@ -41,8 +41,8 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
             Enter Gemini API Key
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="text-sm">
+        <form onSubmit={handleSubmit} className="space-y-4" aria-label="Gemini API key configuration">
+          <div className="text-sm" role="note">
             You can provide an Gemini API key to generate AI insights and Fix
             Plans. The key will be stored locally in your browser.
             <br />
@@ -51,13 +51,16 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
             <Link
               href="https://aistudio.google.com/app/apikey"
               className="underline text-primary-foreground transition-colors duration-200 hover:text-muted-foreground"
+              aria-label="Get Gemini API key (opens in new window)"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               here
             </Link>
             .
           </div>
-          <details className="group text-sm [&>summary:focus-visible]:outline-none">
-            <summary className="cursor-pointer font-medium text-primary-foreground hover:text-muted-foreground">
+          <details className="group text-sm [&>summary:focus-visible]:outline-none" aria-label="Data storage information">
+            <summary className="cursor-pointer font-medium text-primary-foreground hover:text-muted-foreground" tabIndex={0}>
               Data storage disclaimer
             </summary>
             <div className="animate-accordion-down mt-2 space-y-2 overflow-hidden pl-2">
@@ -83,6 +86,8 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
             onChange={(e) => setApiKey(e.target.value)}
             className="flex-1 rounded-md border-[3px] border-black px-3 py-2 text-base font-bold shadow-[4px_4px_0_0_#000000] placeholder:text-base placeholder:font-normal"
             required
+            aria-label="Gemini API key"
+            aria-describedby="api-key-description"
           />
           <div className="flex items-center justify-center">
             <div className="flex gap-3">
@@ -90,6 +95,7 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
                 type="button"
                 onClick={handleClear}
                 className="border-[3px] bg-primary-foreground border-black px-4 py-2 text-black shadow-[4px_4px_0_0_#000000] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-gray-200"
+                aria-label="Clear stored API key"
               >
                 Clear Key
               </Button>
@@ -97,6 +103,7 @@ export function AiDialog({ isOpen, onClose, onSubmit }: AiDialogProps) {
                 type="submit"
                 disabled={!apiKey.startsWith("AI")}
                 className="border-[3px] bg-muted text-accent border-black px-4 py-2 shadow-[4px_4px_0_0_#000000] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-background disabled:opacity-50"
+                aria-label="Save API key"
               >
                 Save Key
               </Button>

@@ -1,6 +1,20 @@
 import React, { RefObject } from 'react';
-import { ChevronDownCircle, ChevronRightCircle, ChevronsDown, ChevronsRight, Loader } from "lucide-react";
-import * as LucideIcons from "lucide-react";
+import { 
+  ChevronDownCircle, 
+  ChevronRightCircle, 
+  ChevronsDown, 
+  ChevronsRight, 
+  Loader, 
+  ChevronDown, 
+  ChevronRight,
+  ChevronsUp,
+  Bandage as BandageIcon,
+  Replace as ReplaceIcon,
+  Wrench,
+  Trash2 as Trash,
+  TriangleAlert,
+  type LucideIcon 
+} from "lucide-react";
 import { Badge } from "../ui/badge";
 import {
   cn,
@@ -260,12 +274,17 @@ const IndividualFixPlan = ({
     );
   };
 
+  const iconMap: Record<string, LucideIcon> = {
+    ChevronsUp,
+    Bandage: BandageIcon,
+    Replace: ReplaceIcon,
+    Wrench,
+    Trash,
+    TriangleAlert,
+  };
+
   const getIconComponent = (iconName: string) => {
-    const IconComponent = iconName
-      ? (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[
-          iconName
-        ]
-      : null;
+    const IconComponent = iconMap[iconName] || null;
 
     return IconComponent ? (
       <IconComponent className="h-8 w-8" size={24} strokeWidth={3} />
@@ -375,13 +394,13 @@ const IndividualFixPlan = ({
                                               {isOpen(
                                                 `${transDep.name}@${transDep.version}@transitive`
                                               ) ? (
-                                                <LucideIcons.ChevronDown
+                                                <ChevronDown
                                                   strokeWidth={2}
                                                   size={18}
                                                   className=""
                                                 />
                                               ) : (
-                                                <LucideIcons.ChevronRight
+                                                <ChevronRight
                                                   strokeWidth={2}
                                                   size={18}
                                                   className=""

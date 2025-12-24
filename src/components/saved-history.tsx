@@ -76,40 +76,48 @@ const SavedHistory = () => {
     }
   };
   return (
-    <div>
+    <div aria-label="Saved repository history">
       <Card
         id="history-card"
         style={{ transform: "translateX(-100%)", opacity: "0.3" }}
         className="bg-background w-[80%] h-131 rounded-xl sm:h-155 sm:w-75 fixed top-92 sm:top-46 left-0 sm:m-4 mx-3 my-4 z-101 overflow-auto scrollbar-background-thumb scrollbar-background-bg hover:opacity-100"
       >
-        <div
+        <button
           id="togglebar"
           className={cn(
-            "absolute bg-accent-foreground w-4 h-[100%] rounded-r-xl right-0 opacity-20 hover:opacity-100 cursor-pointer"
+            "absolute bg-accent-foreground w-4 h-[100%] rounded-r-xl right-0 opacity-20 hover:opacity-100 cursor-pointer border-none"
           )}
           onClick={togglePrefSideCard}
+          aria-label={isOpen ? "Close history sidebar" : "Open history sidebar"}
+          aria-expanded={isOpen}
         />
         <CardHeader>
           <div className="flex flex-row justify-between items-center cursor-pointer pt-4">
             <span className="text-foreground text-xl font-semibold">
               {"Saved history"}
             </span>
-            <div className="flex flex-row gap-x-4">
+            <div className="flex flex-row gap-x-4" role="group" aria-label="History actions">
               <Tooltip>
                 <TooltipTrigger asChild id="refresh-history">
-                  <RefreshCcw
-                    className="text-accent"
+                  <button
+                    className="text-accent bg-transparent border-none cursor-pointer"
                     onClick={refreshhistory}
-                  />
+                    aria-label="Refresh history list"
+                  >
+                    <RefreshCcw />
+                  </button>
                 </TooltipTrigger>
-                <TooltipContent >Refresh History</TooltipContent>
+                <TooltipContent>Refresh History</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild id="delete-history">
-                  <Trash2
-                    className="text-accent"
+                  <button
+                    className="text-accent bg-transparent border-none cursor-pointer"
                     onClick={deletehistory}
-                  />
+                    aria-label="Delete all history"
+                  >
+                    <Trash2 />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>Delete all History</TooltipContent>
               </Tooltip>
@@ -118,13 +126,21 @@ const SavedHistory = () => {
         </CardHeader>
         <hr className="mx-6" />
         <CardContent>
-          <ul className="text-sm text-muted-foreground px-9 list-disc">
+          <ul className="text-sm text-muted-foreground px-9 list-disc" role="list">
             {!history || history.length !== 0
               ? history.map((hist, index) => (
                   <li
                     key={index}
                     className="cursor-pointer rounded-md hover:bg-accent-foreground py-1 px-2 wrap-anywhere"
                     onClick={() => parseUrl(hist)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        parseUrl(hist);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={`Navigate to ${hist.sanitizedUsername}/${hist.sanitizedRepo} branch ${hist.branch}`}
                   >
                     <span>
                       <strong>{hist.sanitizedUsername.toTitleCase()}</strong>/
