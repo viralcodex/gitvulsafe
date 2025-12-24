@@ -33,7 +33,7 @@
     "drizzle-orm": "^0.44.3",
     "lucide-react": "^0.525.0",
     "marked": "^16.1.1",
-    "next": "^15.5.6",
+    "next": "15.5.9",
     "prettier": "^3.6.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
